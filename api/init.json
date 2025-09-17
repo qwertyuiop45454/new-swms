@@ -1,0 +1,182 @@
+{
+  "homeInfo": {
+    "title": "首页",
+    "href": "page/welcome-1.html?t=1"
+  },
+  "logoInfo": {
+    "title": "仓储管理系统",
+    "image": "images/logo.png",
+    "href": ""
+  },
+  "menuInfo": [
+    {
+      "title": "常规管理",
+      "icon": "fa fa-address-book",
+      "href": "page/welcome-1.html",
+      "target": "_self",
+      "child": [
+        
+        {
+          "title": "库存管理",
+          "href": "",
+          "icon": "fa fa-window-maximize",
+          "target": "_self",
+		  "child": [
+		    {
+		      "title": "库存查询",
+		      "href": "page/q库存查询.html",
+		      "icon": "fa fa-adjust",
+		      "target": "_self"
+		    },
+		    {
+		      "title": "库存调整",
+		      "href": "page/q库存调整.html",
+		      "icon": "fa fa-arrows-h",
+		      "target": "_self"
+		    },
+			{
+			  "title": "批次管理",
+			  "href": "page/q批次管理.html",
+			  "icon": "fa fa-bars",
+			  "target": "_self"
+			},
+			{
+			  "title": "库存预警",
+			  "href": "page/q库存预警.html",
+			  "icon": "fa fa-bell",
+			  "target": "_self"
+			}
+		  ]
+        },
+		{
+		  "title": "入库管理",
+		  "href": "",
+		  "icon": "fa fa-database",
+		  "target": "_self",
+		  "child": [
+		    {
+		      "title": "入库预约",
+		      "href": "page/q入库预约.html",
+		      "icon": "fa fa-check",
+		      "target": "_self"
+		    },
+		    {
+		      "title": "到货验收",
+		      "href": "page/q到货验收.html",
+		      "icon": "fa fa-arrows",
+		      "target": "_self"
+		    },
+			{
+			  "title": "入库上架",
+			  "href": "page/q入库上架.html",
+			  "icon": "fa fa-location-arrow",
+			  "target": "_self"
+			},
+			{
+			  "title": "入库记录",
+			  "href": "page/q入库记录.html",
+			  "icon": "fa fa-barcode",
+			  "target": "_self"
+			}
+		  ]
+		},
+        {
+          "title": "出库管理",
+          "href": "",
+          "icon": "fa fa-flag-o",
+          "target": "_self",
+          "child": [
+            {
+              "title": "订单处理",
+              "href": "page/q订单处理.html",
+              "icon": "fa fa-stumbleupon-circle",
+              "target": "_self"
+            },
+            {
+              "title": "拣货管理",
+              "href": "page/q拣货管理.html",
+              "icon": "fa fa-viacoin",
+              "target": "_self"
+            },
+            {
+              "title": "复合打包",
+              "href": "page/q复合打包.html",
+              "icon": "fa fa-tags",
+              "target": "_self"
+            },
+			{
+			  "title": "发货确认",
+			  "href": "page/q发货确认.html",
+			  "icon": "fa fa-circle",
+			  "target": "_self"
+			}
+          ]
+        },
+        {
+          "title": "报表分析",
+          "href": "",
+          "icon": "fa fa-calendar",
+          "target": "_self",
+          "child": [
+            {
+              "title": "库存分析",
+              "href": "page/q库存分析.html",
+              "icon": "fa fa-pencil",
+              "target": "_self"
+            },
+			{
+			  "title": "出入库统计",
+			  "href": "page/q出入库统计.html",
+			  "icon": "fa fa-hourglass-end",
+			  "target": "_self"
+			},
+			{
+			  "title": "周转率分析",
+			  "href": "page/q周转率分析.html",
+			  "icon": "fa fa-paw",
+			  "target": "_self"
+			},
+			{
+			  "title": "数据导出",
+			  "href": "page/q数据导出.html",
+			  "icon": "fa fa-refresh",
+			  "target": "_self"
+			}
+          ]
+        },
+        {
+          "title": "系统设置",
+          "href": "",
+          "icon": "fa fa-snowflake-o",
+          "target": "_self",
+          "child": [
+            {
+              "title": "用户管理",
+              "href": "page/q用户管理.html",
+              "icon": "fa fa-tasks",
+              "target": "_self"
+            },
+            {
+              "title": "权限管理",
+              "href": "page/q权限管理.html",
+              "icon": "fa fa-tags",
+              "target": "_self"
+            },
+			{
+			  "title": "物料管理",
+			  "href": "page/q物料管理.html",
+			  "icon": "fa fa-book",
+			  "target": "_self"
+			},
+			{
+			  "title": "库位管理",
+			  "href": "page/q库位管理.html",
+			  "icon": "fa fa-shield",
+			  "target": "_self"
+			}
+          ]
+        }
+      ]
+    }
+  ]
+}
