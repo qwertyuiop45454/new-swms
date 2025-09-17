@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存调整</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        gray: {
+                            100: '#F2F3F5',
+                            200: '#E5E6EB',
+                            300: '#C9CDD4',
+                            400: '#86909C',
+                            500: '#4E5969',
+                            600: '#1D2129',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .card-shadow {
+                @apply shadow-sm hover:shadow-md transition-shadow duration-300;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-6">
+    <div class="max-w-3xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-semibold text-gray-600">库存调整</h1>
+            <p class="text-gray-400 mt-1">调整库存数量，记录变动原因及详情</p>
+        </div>
+
+        <!-- 库存状态卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg p-4 card-shadow border-l-4 border-success">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">当前可用库存</p>
+                        <p id="currentStock" class="text-2xl font-semibold text-gray-600 mt-1">0</p>
+                    </div>
+                    <i class="fa fa-warehouse text-2xl text-success"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 card-shadow border-l-4 border-primary">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">安全库存阈值</p>
+                        <p id="safetyStock" class="text-2xl font-semibold text-gray-600 mt-1">0</p>
+                    </div>
+                    <i class="fa fa-shield text-2xl text-primary"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 card-shadow border-l-4 border-warning">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">上次调整时间</p>
+                        <p id="lastAdjustTime" class="text-lg font-semibold text-gray-600 mt-1">-</p>
+                    </div>
+                    <i class="fa fa-history text-2xl text-warning"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 库存调整表单 -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <form id="adjustForm" class="space-y-5">
+                <div>
+                    <label for="material" class="block text-sm font-medium text-gray-500 mb-1">物料 <span class="text-danger">*</span></label>
+                    <select id="material" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                        <option value="">请选择物料</option>
+                        <option value="1" data-stock="25" data-safety="10" data-last="2024-09-14">MAT-2024-001 - 笔记本电脑</option>
+                        <option value="2" data-stock="8" data-safety="20" data-last="2024-09-12">MAT-2024-002 - 无线鼠标</option>
+                        <option value="3" data-stock="0" data-safety="5" data-last="2024-09-10">MAT-2024-003 - 显示器</option>
+                        <option value="4" data-stock="45" data-safety="15" data-last="2024-09-09">MAT-2024-004 - 键盘</option>
+                    </select>
+                    <p id="materialError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-500 mb-1">调整类型 <span class="text-danger">*</span></label>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="adjustType" value="increase" class="text-primary focus:ring-primary" checked>
+                            <span class="ml-2 text-sm text-gray-600">增加库存</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="adjustType" value="decrease" class="text-primary focus:ring-primary">
+                            <span class="ml-2 text-sm text-gray-600">减少库存</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-500 mb-1">调整数量 <span class="text-danger">*</span></label>
+                    <input type="number" id="quantity" min="1" step="1" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="请输入调整数量">
+                    <p id="quantityError" class="mt-1 text-sm text-danger hidden"></p>
+                    <p id="stockWarning" class="mt-1 text-sm text-warning hidden"><i class="fa fa-exclamation-circle"></i> 调整后库存将低于安全库存</p>
+                    <p id="insufficientStock" class="mt-1 text-sm text-danger hidden"><i class="fa fa-exclamation-circle"></i> 库存不足，无法减少该数量</p>
+                </div>
+
+                <div>
+                    <label for="reason" class="block text-sm font-medium text-gray-500 mb-1">调整原因 <span class="text-danger">*</span></label>
+                    <select id="reason" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                        <option value="">请选择调整原因</option>
+                        <option value="purchase">采购入库</option>
+                        <option value="sale">销售出库</option>
+                        <option value="return">退货入库</option>
+                        <option value="damage">损坏/报废</option>
+                        <option value="loss">丢失</option>
+                        <option value="inventory">盘点调整</option>
+                        <option value="transfer">库位转移</option>
+                        <option value="other">其他原因</option>
+                    </select>
+                    <p id="reasonError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+
+                <div>
+                    <label for="batchNo" class="block text-sm font-medium text-gray-500 mb-1">批次号</label>
+                    <input type="text" id="batchNo" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="如适用，请输入批次号">
+                </div>
+
+                <div>
+                    <label for="remark" class="block text-sm font-medium text-gray-500 mb-1">调整说明</label>
+                    <textarea id="remark" rows="3" 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                              placeholder="请输入详细调整说明"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" id="resetBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        重置
+                    </button>
+                    <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        取消
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-primary text-white rounded-md btn-hover">
+                        确认调整
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 调整历史记录 -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-600 mb-4 flex items-center">
+                <i class="fa fa-history text-primary mr-2"></i>最近调整记录
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="px-3 py-2 text-left text-gray-500">调整时间</th>
+                            <th class="px-3 py-2 text-left text-gray-500">物料名称</th>
+                            <th class="px-3 py-2 text-left text-gray-500">调整类型</th>
+                            <th class="px-3 py-2 text-left text-gray-500">调整数量</th>
+                            <th class="px-3 py-2 text-left text-gray-500">操作人</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-2">2024-09-14 15:30</td>
+                            <td class="px-3 py-2">笔记本电脑</td>
+                            <td class="px-3 py-2"><span class="text-success">增加</span></td>
+                            <td class="px-3 py-2">+5</td>
+                            <td class="px-3 py-2">张三</td>
+                        </tr>
+                        <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-2">2024-09-12 10:15</td>
+                            <td class="px-3 py-2">无线鼠标</td>
+                            <td class="px-3 py-2"><span class="text-danger">减少</span></td>
+                            <td class="px-3 py-2">-3</td>
+                            <td class="px-3 py-2">李四</td>
+                        </tr>
+                        <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td class="px-3 py-2">2024-09-10 08:45</td>
+                            <td class="px-3 py-2">显示器</td>
+                            <td class="px-3 py-2"><span class="text-danger">减少</span></td>
+                            <td class="px-3 py-2">-2</td>
+                            <td class="px-3 py-2">王五</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调整成功模态框 -->
+    <div id="successModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6 text-center">
+            <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa fa-check text-2xl text-success"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-gray-600 mb-2">调整成功</h3>
+            <p id="successMessage" class="text-gray-500 mb-6">库存已成功更新</p>
+            <div class="flex gap-3">
+                <button id="newAdjustBtn" class="flex-1 px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                    继续调整
+                </button>
+                <button id="closeSuccessModal" class="flex-1 px-4 py-2 bg-primary text-white rounded-md btn-hover">
+                    完成
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const adjustForm = document.getElementById('adjustForm');
+        const materialSelect = document.getElementById('material');
+        const quantityInput = document.getElementById('quantity');
+        const successModal = document.getElementById('successModal');
+        const toast = document.getElementById('toast');
+        
+        // 库存状态显示元素
+        const currentStockEl = document.getElementById('currentStock');
+        const safetyStockEl = document.getElementById('safetyStock');
+        const lastAdjustTimeEl = document.getElementById('lastAdjustTime');
+        
+        // 警告信息元素
+        const stockWarningEl = document.getElementById('stockWarning');
+        const insufficientStockEl = document.getElementById('insufficientStock');
+
+        // 初始化页面
+        function init() {
+            // 监听物料选择变化，更新库存信息
+            materialSelect.addEventListener('change', updateStockInfo);
+            
+            // 监听调整类型和数量变化，显示库存警告
+            document.querySelectorAll('input[name="adjustType"]').forEach(radio => {
+                radio.addEventListener('change', checkStockLevel);
+            });
+            
+            quantityInput.addEventListener('input', checkStockLevel);
+            
+            // 表单提交
+            adjustForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateForm()) {
+                    submitForm();
+                }
+            });
+            
+            // 重置按钮
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                adjustForm.reset();
+                clearErrors();
+                updateStockInfo();
+                hideWarnings();
+            });
+            
+            // 取消按钮
+            document.getElementById('cancelBtn').addEventListener('click', function() {
+                if (confirm('确定要取消库存调整吗？已填写的内容将丢失。')) {
+                    showToast('已取消库存调整', 'info');
+                }
+            });
+            
+            // 成功模态框按钮
+            document.getElementById('newAdjustBtn').addEventListener('click', function() {
+                successModal.classList.add('hidden');
+                adjustForm.reset();
+                clearErrors();
+                updateStockInfo();
+                hideWarnings();
+            });
+            
+            document.getElementById('closeSuccessModal').addEventListener('click', function() {
+                successModal.classList.add('hidden');
+                showToast('库存调整已完成', 'success');
+            });
+        }
+
+        // 更新库存信息显示
+        function updateStockInfo() {
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                currentStockEl.textContent = selectedOption.dataset.stock || '0';
+                safetyStockEl.textContent = selectedOption.dataset.safety || '0';
+                lastAdjustTimeEl.textContent = selectedOption.dataset.last || '-';
+            } else {
+                currentStockEl.textContent = '0';
+                safetyStockEl.textContent = '0';
+                lastAdjustTimeEl.textContent = '-';
+            }
+            checkStockLevel();
+        }
+
+        // 检查库存水平并显示警告
+        function checkStockLevel() {
+            hideWarnings();
+            
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            if (!selectedOption || !selectedOption.value || !quantityInput.value) {
+                return;
+            }
+            
+            const currentStock = parseInt(selectedOption.dataset.stock) || 0;
+            const safetyStock = parseInt(selectedOption.dataset.safety) || 0;
+            const quantity = parseInt(quantityInput.value) || 0;
+            const isDecrease = document.querySelector('input[name="adjustType"][value="decrease"]').checked;
+            
+            let newStock;
+            if (isDecrease) {
+                newStock = currentStock - quantity;
+                // 检查库存是否不足
+                if (newStock < 0) {
+                    insufficientStockEl.classList.remove('hidden');
+                } else if (newStock < safetyStock) {
+                    stockWarningEl.classList.remove('hidden');
+                }
+            } else {
+                newStock = currentStock + quantity;
+                if (newStock < safetyStock) {
+                    stockWarningEl.classList.remove('hidden');
+                }
+            }
+        }
+
+        // 隐藏所有警告
+        function hideWarnings() {
+            stockWarningEl.classList.add('hidden');
+            insufficientStockEl.classList.add('hidden');
+        }
+
+        // 清除错误提示
+        function clearErrors() {
+            document.querySelectorAll('[id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            document.querySelectorAll('.form-input-focus').forEach(el => {
+                el.classList.remove('border-danger');
+            });
+        }
+
+        // 显示错误信息
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('border-danger');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            clearErrors();
+            hideWarnings();
+            
+            // 物料选择验证
+            if (!materialSelect.value) {
+                showError(materialSelect, 'materialError', '请选择需要调整的物料');
+                isValid = false;
+            }
+            
+            // 调整数量验证
+            if (!quantityInput.value || quantityInput.value < 1) {
+                showError(quantityInput, 'quantityError', '请输入有效的调整数量（至少1）');
+                isValid = false;
+            } else if (materialSelect.value) {
+                const currentStock = parseInt(materialSelect.options[materialSelect.selectedIndex].dataset.stock) || 0;
+                const quantity = parseInt(quantityInput.value) || 0;
+                const isDecrease = document.querySelector('input[name="adjustType"][value="decrease"]').checked;
+                
+                // 检查库存是否足够
+                if (isDecrease && quantity > currentStock) {
+                    showError(quantityInput, 'quantityError', '调整数量不能大于当前库存');
+                    isValid = false;
+                }
+            }
+            
+            // 调整原因验证
+            const reasonSelect = document.getElementById('reason');
+            if (!reasonSelect.value) {
+                showError(reasonSelect, 'reasonError', '请选择调整原因');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+
+        // 提交表单
+        function submitForm() {
+            const selectedOption = materialSelect.options[materialSelect.selectedIndex];
+            const materialName = selectedOption.text.split(' - ')[1];
+            const quantity = quantityInput.value;
+            const isIncrease = document.querySelector('input[name="adjustType"][value="increase"]').checked;
+            
+            // 模拟提交
+            setTimeout(() => {
+                // 更新成功消息
+                document.getElementById('successMessage').textContent = 
+                    `已成功${isIncrease ? '增加' : '减少'} ${materialName} 库存 ${quantity} 个单位`;
+                
+                // 显示成功模态框
+                successModal.classList.remove('hidden');
+                
+                // 更新历史记录（简单模拟）
+                const actionType = isIncrease ? '增加' : '减少';
+                const actionClass = isIncrease ? 'text-success' : 'text-danger';
+                const actionSymbol = isIncrease ? '+' : '-';
+                
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+                
+                const tableBody = document.querySelector('tbody');
+                const newRow = document.createElement('tr');
+                newRow.className = 'border-t border-gray-100 hover:bg-gray-50 transition-colors';
+                newRow.innerHTML = `
+                    <td class="px-3 py-2">${timeStr}</td>
+                    <td class="px-3 py-2">${materialName}</td>
+                    <td class="px-3 py-2"><span class="${actionClass}">${actionType}</span></td>
+                    <td class="px-3 py-2">${actionSymbol}${quantity}</td>
+                    <td class="px-3 py-2">当前用户</td>
+                `;
+                
+                // 添加到表格顶部
+                if (tableBody.firstChild) {
+                    tableBody.insertBefore(newRow, tableBody.firstChild);
+                } else {
+                    tableBody.appendChild(newRow);
+                }
+                
+                // 更新物料库存数据
+                const currentStock = parseInt(selectedOption.dataset.stock) || 0;
+                const newStock = isIncrease ? currentStock + parseInt(quantity) : currentStock - parseInt(quantity);
+                selectedOption.dataset.stock = newStock;
+                selectedOption.dataset.last = timeStr.split(' ')[0];
+                
+                // 更新库存显示
+                updateStockInfo();
+                
+            }, 800);
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(e) {
+            if (e.target === successModal) {
+                successModal.classList.add('hidden');
+            }
+        });
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

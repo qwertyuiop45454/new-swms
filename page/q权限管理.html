@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>权限管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C',
+                        light: '#F2F3F5',
+                        dark: '#1D2129'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card {
+                @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary/50;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90 focus:ring-success/50;
+            }
+            .btn-warning {
+                @apply bg-warning text-white hover:bg-warning/90 focus:ring-warning/50;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90 focus:ring-danger/50;
+            }
+            .btn-outline {
+                @apply border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all;
+            }
+            .form-error {
+                @apply border-danger focus:ring-danger/50 focus:border-danger;
+            }
+            .permission-group {
+                @apply mb-6 border border-gray-200 rounded-lg overflow-hidden;
+            }
+            .permission-header {
+                @apply bg-gray-50 px-4 py-3 flex justify-between items-center cursor-pointer;
+            }
+            .permission-content {
+                @apply p-4 border-t border-gray-200;
+            }
+            .permission-item {
+                @apply flex items-center gap-2 mb-3;
+            }
+            .badge {
+                @apply px-2 py-1 text-xs rounded-full font-medium;
+            }
+            .transition-height {
+                @apply transition-all duration-300 ease-in-out;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">权限管理</h1>
+            <p class="text-gray-500 mt-1">管理系统角色及对应的权限分配</p>
+        </div>
+
+        <!-- 操作按钮区 -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div class="relative w-full sm:w-64">
+                <input type="text" id="searchRole" placeholder="搜索角色..." 
+                       class="form-input pl-10">
+                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <div class="flex gap-3">
+                <button id="addRoleBtn" class="btn btn-primary flex items-center gap-2">
+                    <i class="fa fa-plus"></i>
+                    <span>新增角色</span>
+                </button>
+                <button id="batchDeleteBtn" class="btn btn-danger flex items-center gap-2" disabled>
+                    <i class="fa fa-trash"></i>
+                    <span>批量删除</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 角色列表 -->
+            <div class="lg:col-span-1">
+                <div class="card h-full">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="font-semibold text-gray-800">角色列表</h2>
+                        <p class="text-sm text-gray-500 mt-1">选择角色进行权限配置</p>
+                    </div>
+                    
+                    <div class="max-h-[calc(100vh-320px)] overflow-y-auto">
+                        <ul id="roleList" class="divide-y divide-gray-100">
+                            <!-- 角色列表将通过JavaScript动态生成 -->
+                        </ul>
+                    </div>
+                    
+                    <div class="p-4 border-t border-gray-200">
+                        <div class="text-sm text-gray-500">
+                            共 <span id="totalRoles">0</span> 个角色
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 权限配置 -->
+            <div class="lg:col-span-2">
+                <div class="card" id="permissionCard">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="font-semibold text-gray-800" id="permissionTitle">权限配置</h2>
+                        <p class="text-sm text-gray-500 mt-1" id="permissionDesc">请先从左侧选择一个角色</p>
+                    </div>
+                    
+                    <div id="permissionContent" class="p-6 hidden">
+                        <form id="permissionForm">
+                            <input type="hidden" id="roleId">
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">基本信息</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="roleName" class="block text-sm font-medium text-gray-700 mb-1">
+                                            角色名称 <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" id="roleName" class="form-input" placeholder="请输入角色名称">
+                                        <p id="roleNameError" class="mt-1 text-sm text-danger hidden"></p>
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="roleCode" class="block text-sm font-medium text-gray-700 mb-1">
+                                            角色编码 <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" id="roleCode" class="form-input" placeholder="请输入角色编码（英文/数字）">
+                                        <p id="roleCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <label for="roleDesc" class="block text-sm font-medium text-gray-700 mb-1">
+                                        角色描述
+                                    </label>
+                                    <textarea id="roleDesc" rows="2" class="form-input" placeholder="请输入角色描述信息"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-3">
+                                    权限设置 <span class="text-danger">*</span>
+                                </label>
+                                <p id="permissionsError" class="mt-1 text-sm text-danger hidden mb-4"></p>
+                                
+                                <!-- 用户管理权限组 -->
+                                <div class="permission-group">
+                                    <div class="permission-header" onclick="togglePermissionGroup('userManagement')">
+                                        <div class="font-medium">用户管理</div>
+                                        <i class="fa fa-chevron-down text-gray-400 transition-transform duration-300" id="userManagementIcon"></i>
+                                    </div>
+                                    <div class="permission-content" id="userManagementContent">
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="user_view" name="permissions" value="user:view" class="w-4 h-4 text-primary rounded">
+                                            <label for="user_view">查看用户列表</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="user_create" name="permissions" value="user:create" class="w-4 h-4 text-primary rounded">
+                                            <label for="user_create">创建新用户</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="user_edit" name="permissions" value="user:edit" class="w-4 h-4 text-primary rounded">
+                                            <label for="user_edit">编辑用户信息</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="user_delete" name="permissions" value="user:delete" class="w-4 h-4 text-primary rounded">
+                                            <label for="user_delete">删除用户</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="user_import_export" name="permissions" value="user:import_export" class="w-4 h-4 text-primary rounded">
+                                            <label for="user_import_export">导入导出用户数据</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 角色管理权限组 -->
+                                <div class="permission-group">
+                                    <div class="permission-header" onclick="togglePermissionGroup('roleManagement')">
+                                        <div class="font-medium">角色管理</div>
+                                        <i class="fa fa-chevron-down text-gray-400 transition-transform duration-300" id="roleManagementIcon"></i>
+                                    </div>
+                                    <div class="permission-content" id="roleManagementContent">
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="role_view" name="permissions" value="role:view" class="w-4 h-4 text-primary rounded">
+                                            <label for="role_view">查看角色列表</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="role_create" name="permissions" value="role:create" class="w-4 h-4 text-primary rounded">
+                                            <label for="role_create">创建新角色</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="role_edit" name="permissions" value="role:edit" class="w-4 h-4 text-primary rounded">
+                                            <label for="role_edit">编辑角色信息</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="role_delete" name="permissions" value="role:delete" class="w-4 h-4 text-primary rounded">
+                                            <label for="role_delete">删除角色</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="role_assign" name="permissions" value="role:assign" class="w-4 h-4 text-primary rounded">
+                                            <label for="role_assign">分配角色权限</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 内容管理权限组 -->
+                                <div class="permission-group">
+                                    <div class="permission-header" onclick="togglePermissionGroup('contentManagement')">
+                                        <div class="font-medium">内容管理</div>
+                                        <i class="fa fa-chevron-down text-gray-400 transition-transform duration-300" id="contentManagementIcon"></i>
+                                    </div>
+                                    <div class="permission-content" id="contentManagementContent">
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="content_view" name="permissions" value="content:view" class="w-4 h-4 text-primary rounded">
+                                            <label for="content_view">查看内容列表</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="content_create" name="permissions" value="content:create" class="w-4 h-4 text-primary rounded">
+                                            <label for="content_create">创建内容</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="content_edit" name="permissions" value="content:edit" class="w-4 h-4 text-primary rounded">
+                                            <label for="content_edit">编辑内容</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="content_delete" name="permissions" value="content:delete" class="w-4 h-4 text-primary rounded">
+                                            <label for="content_delete">删除内容</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="content_publish" name="permissions" value="content:publish" class="w-4 h-4 text-primary rounded">
+                                            <label for="content_publish">发布/下架内容</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 系统设置权限组 -->
+                                <div class="permission-group">
+                                    <div class="permission-header" onclick="togglePermissionGroup('systemSettings')">
+                                        <div class="font-medium">系统设置</div>
+                                        <i class="fa fa-chevron-down text-gray-400 transition-transform duration-300" id="systemSettingsIcon"></i>
+                                    </div>
+                                    <div class="permission-content" id="systemSettingsContent">
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="system_config" name="permissions" value="system:config" class="w-4 h-4 text-primary rounded">
+                                            <label for="system_config">系统参数配置</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="system_log" name="permissions" value="system:log" class="w-4 h-4 text-primary rounded">
+                                            <label for="system_log">查看系统日志</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="system_backup" name="permissions" value="system:backup" class="w-4 h-4 text-primary rounded">
+                                            <label for="system_backup">数据备份与恢复</label>
+                                        </div>
+                                        <div class="permission-item">
+                                            <input type="checkbox" id="system_security" name="permissions" value="system:security" class="w-4 h-4 text-primary rounded">
+                                            <label for="system_security">安全设置</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                                <button type="button" id="cancelPermissionBtn" class="btn btn-outline">取消</button>
+                                <button type="submit" class="btn btn-primary">保存权限</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div id="emptyPermissionState" class="p-10 text-center">
+                        <i class="fa fa-key text-5xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500">请从左侧选择一个角色来配置权限</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
+            <h3 class="text-lg font-semibold mb-3">确认删除</h3>
+            <p class="text-gray-600 mb-5" id="deleteConfirmText">您确定要删除选中的角色吗？此操作不可恢复。</p>
+            <input type="hidden" id="deleteRoleId">
+            <div class="flex justify-end gap-3">
+                <button id="cancelDeleteBtn" class="btn btn-outline">取消</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // 模拟角色与权限数据
+        let roles = [
+            {
+                id: 1,
+                name: '超级管理员',
+                code: 'super_admin',
+                description: '拥有系统全部权限',
+                permissions: [
+                    'user:view', 'user:create', 'user:edit', 'user:delete', 'user:import_export',
+                    'role:view', 'role:create', 'role:edit', 'role:delete', 'role:assign',
+                    'content:view', 'content:create', 'content:edit', 'content:delete', 'content:publish',
+                    'system:config', 'system:log', 'system:backup', 'system:security'
+                ],
+                userCount: 1,
+                createdAt: '2023-01-10'
+            },
+            {
+                id: 2,
+                name: '内容管理员',
+                code: 'content_admin',
+                description: '负责内容管理相关操作',
+                permissions: [
+                    'user:view',
+                    'content:view', 'content:create', 'content:edit', 'content:delete', 'content:publish'
+                ],
+                userCount: 3,
+                createdAt: '2023-01-15'
+            },
+            {
+                id: 3,
+                name: '编辑',
+                code: 'editor',
+                description: '只能编辑和查看内容，不能删除',
+                permissions: [
+                    'user:view',
+                    'content:view', 'content:create', 'content:edit', 'content:publish'
+                ],
+                userCount: 5,
+                createdAt: '2023-01-20'
+            },
+            {
+                id: 4,
+                name: '查看者',
+                code: 'viewer',
+                description: '只能查看内容，没有修改权限',
+                permissions: [
+                    'user:view',
+                    'content:view'
+                ],
+                userCount: 12,
+                createdAt: '2023-02-05'
+            }
+        ];
+
+        // 当前选中的角色ID
+        let selectedRoleId = null;
+        // 过滤后的角色列表
+        let filteredRoles = [...roles];
+
+        // DOM元素
+        const roleList = document.getElementById('roleList');
+        const totalRoles = document.getElementById('totalRoles');
+        const addRoleBtn = document.getElementById('addRoleBtn');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        const searchRoleInput = document.getElementById('searchRole');
+        const permissionContent = document.getElementById('permissionContent');
+        const emptyPermissionState = document.getElementById('emptyPermissionState');
+        const permissionTitle = document.getElementById('permissionTitle');
+        const permissionDesc = document.getElementById('permissionDesc');
+        const permissionForm = document.getElementById('permissionForm');
+        const roleIdInput = document.getElementById('roleId');
+        const roleNameInput = document.getElementById('roleName');
+        const roleCodeInput = document.getElementById('roleCode');
+        const roleDescInput = document.getElementById('roleDesc');
+        const cancelPermissionBtn = document.getElementById('cancelPermissionBtn');
+        const confirmModal = document.getElementById('confirmModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteRoleIdInput = document.getElementById('deleteRoleId');
+        const deleteConfirmText = document.getElementById('deleteConfirmText');
+        const toast = document.getElementById('toast');
+
+        // 初始化页面
+        function init() {
+            renderRoleList();
+            setupEventListeners();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 新增角色按钮
+            addRoleBtn.addEventListener('click', () => {
+                openAddRoleForm();
+            });
+
+            // 表单提交
+            permissionForm.addEventListener('submit', handlePermissionSubmit);
+
+            // 取消按钮
+            cancelPermissionBtn.addEventListener('click', resetPermissionForm);
+
+            // 确认删除相关
+            cancelDeleteBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+
+            confirmDeleteBtn.addEventListener('click', () => {
+                const roleId = parseInt(deleteRoleIdInput.value);
+                deleteRole(roleId);
+                confirmModal.classList.add('hidden');
+            });
+
+            // 搜索角色
+            searchRoleInput.addEventListener('input', handleRoleSearch);
+        }
+
+        // 渲染角色列表
+        function renderRoleList() {
+            roleList.innerHTML = '';
+            totalRoles.textContent = filteredRoles.length;
+
+            if (filteredRoles.length === 0) {
+                const emptyItem = document.createElement('li');
+                emptyItem.className = 'p-6 text-center text-gray-500';
+                emptyItem.innerHTML = `
+                    <i class="fa fa-users text-2xl mb-2 block"></i>
+                    没有找到匹配的角色
+                `;
+                roleList.appendChild(emptyItem);
+            } else {
+                filteredRoles.forEach(role => {
+                    const roleItem = document.createElement('li');
+                    roleItem.className = `p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedRoleId === role.id ? 'bg-primary/5 border-l-4 border-primary' : ''}`;
+                    roleItem.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <div class="font-medium ${selectedRoleId === role.id ? 'text-primary' : ''}">${role.name}</div>
+                                <div class="text-xs text-gray-500 mt-1">${role.code}</div>
+                            </div>
+                            <div class="flex gap-1">
+                                <button class="text-gray-400 hover:text-primary p-1" 
+                                        onclick="editRole(${role.id}, event)">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="text-gray-400 hover:text-danger p-1" 
+                                        onclick="openDeleteRoleConfirm(${role.id}, event)">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mt-2 flex justify-between items-center text-xs">
+                            <span class="text-gray-500">
+                                <i class="fa fa-user-o mr-1"></i> ${role.userCount} 位用户
+                            </span>
+                            <span class="text-gray-400">创建于 ${role.createdAt}</span>
+                        </div>
+                    `;
+
+                    // 点击角色项选择角色
+                    roleItem.addEventListener('click', (e) => {
+                        // 如果点击的是操作按钮，则不触发选择
+                        if (!e.target.closest('button')) {
+                            selectRole(role.id);
+                        }
+                    });
+
+                    roleList.appendChild(roleItem);
+                });
+            }
+
+            // 更新批量删除按钮状态
+            updateBatchDeleteButton();
+        }
+
+        // 选择角色
+        function selectRole(roleId) {
+            selectedRoleId = roleId;
+            const role = roles.find(r => r.id === roleId);
+            
+            if (role) {
+                // 更新权限面板标题和描述
+                permissionTitle.textContent = `${role.name} - 权限配置`;
+                permissionDesc.textContent = role.description || '该角色暂无描述信息';
+                
+                // 填充表单数据
+                roleIdInput.value = role.id;
+                roleNameInput.value = role.name;
+                roleCodeInput.value = role.code;
+                roleDescInput.value = role.description || '';
+                
+                // 重置权限选择
+                document.querySelectorAll('input[name="permissions"]').forEach(checkbox => {
+                    checkbox.checked = role.permissions.includes(checkbox.value);
+                });
+                
+                // 显示权限配置内容，隐藏空状态
+                permissionContent.classList.remove('hidden');
+                emptyPermissionState.classList.add('hidden');
+            }
+            
+            // 重新渲染角色列表以更新选中状态
+            renderRoleList();
+        }
+
+        // 打开新增角色表单
+        function openAddRoleForm() {
+            // 重置表单
+            resetPermissionForm();
+            clearFormErrors();
+            
+            // 清空ID表示是新增
+            roleIdInput.value = '';
+            roleCodeInput.removeAttribute('readonly');
+            
+            // 更新标题
+            permissionTitle.textContent = '新增角色 - 权限配置';
+            permissionDesc.textContent = '创建新角色并分配相应权限';
+            
+            // 显示权限配置内容，隐藏空状态
+            permissionContent.classList.remove('hidden');
+            emptyPermissionState.classList.add('hidden');
+            
+            // 取消选中状态
+            selectedRoleId = null;
+            renderRoleList();
+        }
+
+        // 编辑角色
+        function editRole(roleId, event) {
+            event.stopPropagation();
+            selectRole(roleId);
+            // 编辑时角色编码只读
+            roleCodeInput.setAttribute('readonly', 'readonly');
+        }
+
+        // 处理权限表单提交
+        function handlePermissionSubmit(e) {
+            e.preventDefault();
+            
+            if (validatePermissionForm()) {
+                const roleId = roleIdInput.value;
+                const roleData = {
+                    name: roleNameInput.value.trim(),
+                    code: roleCodeInput.value.trim(),
+                    description: roleDescInput.value.trim(),
+                    permissions: Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+                        .map(checkbox => checkbox.value)
+                };
+                
+                if (!roleId) {
+                    // 新增角色
+                    roleData.id = Date.now();
+                    roleData.userCount = 0;
+                    roleData.createdAt = new Date().toLocaleDateString('zh-CN');
+                    roles.push(roleData);
+                    showToast('角色创建成功', 'success');
+                    
+                    // 选中新创建的角色
+                    selectedRoleId = roleData.id;
+                } else {
+                    // 编辑角色
+                    const index = roles.findIndex(r => r.id === parseInt(roleId));
+                    if (index !== -1) {
+                        // 保留不变的字段
+                        roleData.userCount = roles[index].userCount;
+                        roleData.createdAt = roles[index].createdAt;
+                        roles[index] = { ...roleData, id: parseInt(roleId) };
+                        showToast('角色权限更新成功', 'success');
+                    }
+                }
+                
+                // 刷新角色列表
+                filterRoles();
+                renderRoleList();
+            }
+        }
+
+        // 验证权限表单
+        function validatePermissionForm() {
+            let isValid = true;
+            clearFormErrors();
+            
+            // 验证角色名称
+            const roleName = roleNameInput.value.trim();
+            if (!roleName) {
+                showError('roleName', '请输入角色名称');
+                isValid = false;
+            } else if (roleName.length < 2 || roleName.length > 20) {
+                showError('roleName', '角色名称长度应在2-20个字符之间');
+                isValid = false;
+            } else if (!roleIdInput.value && roles.some(r => r.name === roleName)) {
+                showError('roleName', '该角色名称已存在');
+                isValid = false;
+            }
+            
+            // 验证角色编码
+            const roleCode = roleCodeInput.value.trim();
+            const codeRegex = /^[a-zA-Z0-9_]+$/;
+            if (!roleCode) {
+                showError('roleCode', '请输入角色编码');
+                isValid = false;
+            } else if (!codeRegex.test(roleCode)) {
+                showError('roleCode', '角色编码只能包含字母、数字和下划线');
+                isValid = false;
+            } else if (roleCode.length < 3 || roleCode.length > 20) {
+                showError('roleCode', '角色编码长度应在3-20个字符之间');
+                isValid = false;
+            } else if (!roleIdInput.value && roles.some(r => r.code === roleCode)) {
+                showError('roleCode', '该角色编码已存在');
+                isValid = false;
+            }
+            
+            // 验证权限选择
+            const selectedPermissions = document.querySelectorAll('input[name="permissions"]:checked').length;
+            if (selectedPermissions === 0) {
+                document.getElementById('permissionsError').textContent = '请至少选择一项权限';
+                document.getElementById('permissionsError').classList.remove('hidden');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+
+        // 重置权限表单
+        function resetPermissionForm() {
+            permissionForm.reset();
+            clearFormErrors();
+            roleCodeInput.removeAttribute('readonly');
+            
+            // 重置选中状态
+            selectedRoleId = null;
+            renderRoleList();
+            
+            // 显示空状态，隐藏配置内容
+            permissionContent.classList.add('hidden');
+            emptyPermissionState.classList.remove('hidden');
+        }
+
+        // 打开删除角色确认
+        function openDeleteRoleConfirm(roleId, event) {
+            event.stopPropagation();
+            
+            const role = roles.find(r => r.id === roleId);
+            if (role) {
+                deleteRoleIdInput.value = roleId;
+                
+                // 不同提示文本
+                if (role.userCount > 0) {
+                    deleteConfirmText.textContent = `该角色"${role.name}"已分配给${role.userCount}位用户，删除后这些用户将失去相应权限。确定要删除吗？此操作不可恢复。`;
+                } else {
+                    deleteConfirmText.textContent = `您确定要删除角色"${role.name}"吗？此操作不可恢复。`;
+                }
+                
+                confirmModal.classList.remove('hidden');
+            }
+        }
+
+        // 删除角色
+        function deleteRole(roleId) {
+            const initialLength = roles.length;
+            roles = roles.filter(role => role.id !== roleId);
+            
+            if (roles.length < initialLength) {
+                // 如果删除的是当前选中的角色，重置选择状态
+                if (selectedRoleId === roleId) {
+                    selectedRoleId = null;
+                    permissionContent.classList.add('hidden');
+                    emptyPermissionState.classList.remove('hidden');
+                }
+                
+                showToast('角色已删除', 'success');
+                filterRoles();
+                renderRoleList();
+            }
+        }
+
+        // 处理角色搜索
+        function handleRoleSearch() {
+            filterRoles();
+            renderRoleList();
+        }
+
+        // 过滤角色
+        function filterRoles() {
+            const searchTerm = searchRoleInput.value.trim().toLowerCase();
+            if (searchTerm) {
+                filteredRoles = roles.filter(role => 
+                    role.name.toLowerCase().includes(searchTerm) || 
+                    role.code.toLowerCase().includes(searchTerm) ||
+                    (role.description && role.description.toLowerCase().includes(searchTerm))
+                );
+            } else {
+                filteredRoles = [...roles];
+            }
+        }
+
+        // 切换权限组展开/折叠
+        function togglePermissionGroup(groupId) {
+            const content = document.getElementById(`${groupId}Content`);
+            const icon = document.getElementById(`${groupId}Icon`);
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
+
+        // 显示错误信息
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(`${fieldId}Error`);
+            
+            field.classList.add('form-error');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        // 清除表单错误
+        function clearFormErrors() {
+            ['roleName', 'roleCode'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const errorElement = document.getElementById(`${fieldId}Error`);
+                
+                field.classList.remove('form-error');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                    errorElement.textContent = '';
+                }
+            });
+            
+            // 清除权限选择错误
+            document.getElementById('permissionsError').classList.add('hidden');
+            document.getElementById('permissionsError').textContent = '';
+        }
+
+        // 更新批量删除按钮状态
+        function updateBatchDeleteButton() {
+            // 实际项目中这里会根据选中的角色数量来判断
+            // 这里简化处理，只有存在角色时才启用
+            batchDeleteBtn.disabled = filteredRoles.length === 0;
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 暴露函数到全局，供HTML中直接调用
+        window.editRole = editRole;
+        window.openDeleteRoleConfirm = openDeleteRoleConfirm;
+        window.togglePermissionGroup = togglePermissionGroup;
+    </script>
+</body>
+</html>
+    

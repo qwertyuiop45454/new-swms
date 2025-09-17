@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>复合打包管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#64748b',
+                        success: '#166534',
+                        warning: '#c2410c',
+                        danger: '#dc2626',
+                        neutral: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+            .pack-type-tag {
+                @apply px-2 py-1 bg-primary/10 text-primary text-xs rounded-full;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">复合打包管理</h1>
+            <p class="text-neutral-500 mt-1">多商品组合打包与包装信息管理</p>
+        </div>
+
+        <!-- 复合打包表单 -->
+        <form id="packagingForm" class="space-y-6">
+            <!-- 打包单基本信息 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-box text-primary mr-2"></i>打包单基本信息
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="packNo" class="block text-sm font-medium text-neutral-700 mb-1">打包单编号 <span class="text-danger">*</span></label>
+                        <input type="text" id="packNo" readonly
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md bg-neutral-50"
+                               placeholder="系统自动生成">
+                        <p id="packNoError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="relatedOrderNo" class="block text-sm font-medium text-neutral-700 mb-1">关联订单号 <span class="text-danger">*</span></label>
+                        <input type="text" id="relatedOrderNo" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="输入关联的订单编号">
+                        <p id="relatedOrderNoError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="packDate" class="block text-sm font-medium text-neutral-700 mb-1">打包日期 <span class="text-danger">*</span></label>
+                        <input type="date" id="packDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <p id="packDateError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="packStatus" class="block text-sm font-medium text-neutral-700 mb-1">打包状态 <span class="text-danger">*</span></label>
+                        <select id="packStatus" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择打包状态</option>
+                            <option value="pending">待打包</option>
+                            <option value="processing">打包中</option>
+                            <option value="completed">已完成</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                        <p id="packStatusError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="packer" class="block text-sm font-medium text-neutral-700 mb-1">打包员 <span class="text-danger">*</span></label>
+                        <input type="text" id="packer" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="打包员姓名">
+                        <p id="packerError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="packType" class="block text-sm font-medium text-neutral-700 mb-1">打包类型 <span class="text-danger">*</span></label>
+                        <select id="packType" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择打包类型</option>
+                            <option value="standard">标准包装</option>
+                            <option value="gift">礼品包装</option>
+                            <option value="bulk">批量组合</option>
+                            <option value="fragile">易碎品包装</option>
+                            <option value="custom">定制包装</option>
+                        </select>
+                        <p id="packTypeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 包装材料信息 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-cubes text-primary mr-2"></i>包装材料信息
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="boxType" class="block text-sm font-medium text-neutral-700 mb-1">包装盒类型 <span class="text-danger">*</span></label>
+                        <select id="boxType" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择包装盒类型</option>
+                            <option value="carton-small">小纸箱</option>
+                            <option value="carton-medium">中纸箱</option>
+                            <option value="carton-large">大纸箱</option>
+                            <option value="envelope">信封</option>
+                            <option value="bag">包装袋</option>
+                            <option value="custom">定制包装盒</option>
+                        </select>
+                        <p id="boxTypeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="boxQuantity" class="block text-sm font-medium text-neutral-700 mb-1">包装盒数量 <span class="text-danger">*</span></label>
+                        <input type="number" min="1" id="boxQuantity" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="使用的包装盒数量">
+                        <p id="boxQuantityError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="packingMaterials" class="block text-sm font-medium text-neutral-700 mb-1">辅助包装材料</label>
+                        <div class="flex flex-wrap gap-2 mt-1">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="bubble" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">气泡膜</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="foam" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">泡沫垫</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="tape" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">胶带</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="straps" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">打包带</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="bag" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">密封袋</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="materials" value="other" class="rounded text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">其他</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-3">
+                        <label for="packingInstructions" class="block text-sm font-medium text-neutral-700 mb-1">包装要求与说明</label>
+                        <textarea id="packingInstructions" rows="2" 
+                                  class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                  placeholder="特殊包装要求、堆叠方式、注意事项等"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 打包商品明细 -->
+            <div class="card-shadow p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                    <h2 class="text-lg font-semibold text-neutral-800 pb-2 border-b border-neutral-200 w-full sm:w-auto">
+                        <i class="fa fa-list-alt text-primary mr-2"></i>打包商品明细
+                    </h2>
+                    <button type="button" id="addProductBtn" class="mt-2 sm:mt-0 text-primary text-sm flex items-center btn-hover">
+                        <i class="fa fa-plus-circle mr-1"></i> 添加商品
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="productsTable">
+                        <thead>
+                            <tr class="bg-neutral-50">
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">序号</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">商品编码 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">商品名称 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">规格型号</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">单位 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">数量 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">重量(kg)</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">包装位置</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">特殊处理</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsBody">
+                            <tr class="border-t border-neutral-200 product-row">
+                                <td class="px-3 py-3 product-index">1</td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="product-code w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="商品编码">
+                                    <p class="mt-1 text-sm text-danger product-code-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="product-name w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="商品名称">
+                                    <p class="mt-1 text-sm text-danger product-name-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="product-spec w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="规格型号">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="product-unit w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="单位">
+                                    <p class="mt-1 text-sm text-danger product-unit-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="number" min="1" class="product-quantity qty w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="数量">
+                                    <p class="mt-1 text-sm text-danger product-quantity-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="number" min="0" step="0.01" class="product-weight w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="重量">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="product-position w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="例如：箱1-上层">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <select class="product-handling w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                                        <option value="">无</option>
+                                        <option value="fragile">易碎品</option>
+                                        <option value="separate">单独包装</option>
+                                        <option value="upright">保持直立</option>
+                                        <option value="protect">防潮防晒</option>
+                                    </select>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <button type="button" class="text-danger hover:text-danger/80 remove-product" disabled>
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4 flex justify-between items-center flex-wrap gap-4">
+                    <div>
+                        <p id="productsError" class="mt-2 text-sm text-danger hidden">请至少添加一种商品</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center">
+                            <span class="mr-2 text-neutral-700">总商品数量：</span>
+                            <span id="totalQuantity" class="font-semibold">0</span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="mr-2 text-neutral-700">预估总重量(kg)：</span>
+                            <span id="totalWeight" class="font-semibold text-primary">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 打包检验信息 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-check-square-o text-primary mr-2"></i>打包检验信息
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="inspector" class="block text-sm font-medium text-neutral-700 mb-1">检验员</label>
+                        <input type="text" id="inspector" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="检验员姓名">
+                    </div>
+                    
+                    <div>
+                        <label for="inspectDate" class="block text-sm font-medium text-neutral-700 mb-1">检验日期</label>
+                        <input type="date" id="inspectDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-neutral-700 mb-1">检验结果</label>
+                        <div class="flex flex-wrap gap-4 mt-1">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="inspectResult" value="passed" class="text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">检验通过</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="inspectResult" value="failed" class="text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">检验不通过</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="inspectResult" value="pending" checked class="text-primary focus:ring-primary">
+                                <span class="ml-2 text-sm text-neutral-700">待检验</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label for="inspectRemarks" class="block text-sm font-medium text-neutral-700 mb-1">检验备注与问题记录</label>
+                        <textarea id="inspectRemarks" rows="3" 
+                                  class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                  placeholder="记录包装检验情况、发现的问题及处理方式等"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-neutral-200">
+                <button type="button" id="resetBtn" class="px-5 py-2.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 btn-hover">
+                    重置
+                </button>
+                <button type="button" id="saveDraftBtn" class="px-5 py-2.5 border border-primary bg-primary/10 text-primary rounded-md btn-hover">
+                    保存草稿
+                </button>
+                <button type="button" id="inProgressBtn" class="px-5 py-2.5 border border-warning bg-warning/10 text-warning rounded-md btn-hover">
+                    标记为打包中
+                </button>
+                <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                    完成打包
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const packagingForm = document.getElementById('packagingForm');
+        const productsBody = document.getElementById('productsBody');
+        const addProductBtn = document.getElementById('addProductBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const inProgressBtn = document.getElementById('inProgressBtn');
+        const toast = document.getElementById('toast');
+        const totalQuantityEl = document.getElementById('totalQuantity');
+        const totalWeightEl = document.getElementById('totalWeight');
+        
+        // 初始化页面
+        function init() {
+            // 生成打包单编号
+            generatePackNo();
+            
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('packDate').value = today;
+            
+            // 添加商品行
+            addProductBtn.addEventListener('click', addProductRow);
+            
+            // 重置表单
+            resetBtn.addEventListener('click', function() {
+                if (confirm('确定要重置表单吗？所有已填写的内容将被清空。')) {
+                    packagingForm.reset();
+                    // 保留默认值
+                    document.getElementById('packNo').value = generatePackNo();
+                    document.getElementById('packDate').value = today;
+                    document.querySelector('input[name="inspectResult"][value="pending"]').checked = true;
+                    
+                    // 重置商品表格，只保留一行
+                    while (productsBody.children.length > 1) {
+                        productsBody.removeChild(productsBody.lastChild);
+                    }
+                    
+                    // 重置第一行
+                    const firstRow = productsBody.querySelector('.product-row');
+                    firstRow.querySelectorAll('input, select').forEach(el => {
+                        el.value = '';
+                    });
+                    
+                    // 更新统计数据
+                    updateTotals();
+                    
+                    clearErrors();
+                    updateRemoveButtons();
+                    updateProductIndices();
+                }
+            });
+            
+            // 保存草稿
+            saveDraftBtn.addEventListener('click', function() {
+                if (validateBasicInfo()) {
+                    showToast('草稿已保存', 'info');
+                }
+            });
+            
+            // 标记为打包中
+            inProgressBtn.addEventListener('click', function() {
+                if (validateInProgress()) {
+                    document.getElementById('packStatus').value = 'processing';
+                    showToast('已标记为打包中', 'warning');
+                }
+            });
+            
+            // 表单提交（完成打包）
+            packagingForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateComplete()) {
+                    document.getElementById('packStatus').value = 'completed';
+                    showToast('打包已完成', 'success');
+                    setTimeout(() => {
+                        // 实际应用中这里会提交到服务器
+                        console.log('打包完成，数据已保存');
+                    }, 800);
+                }
+            });
+            
+            // 初始化事件绑定
+            updateRemoveButtons();
+            bindProductEvents();
+            updateTotals();
+        }
+        
+        // 生成打包单编号
+        function generatePackNo() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const random = Math.floor(1000 + Math.random() * 9000); // 4位随机数
+            const no = `PACK-${year}${month}${day}-${random}`;
+            document.getElementById('packNo').value = no;
+            return no;
+        }
+        
+        // 添加商品行
+        function addProductRow() {
+            const rows = document.querySelectorAll('.product-row');
+            const newIndex = rows.length + 1;
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t border-neutral-200 product-row';
+            newRow.innerHTML = `
+                <td class="px-3 py-3 product-index">${newIndex}</td>
+                <td class="px-3 py-3">
+                    <input type="text" class="product-code w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="商品编码">
+                    <p class="mt-1 text-sm text-danger product-code-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="product-name w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="商品名称">
+                    <p class="mt-1 text-sm text-danger product-name-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="product-spec w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="规格型号">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="product-unit w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="单位">
+                    <p class="mt-1 text-sm text-danger product-unit-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="number" min="1" class="product-quantity qty w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="数量">
+                    <p class="mt-1 text-sm text-danger product-quantity-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="number" min="0" step="0.01" class="product-weight w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="重量">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="product-position w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="例如：箱1-上层">
+                </td>
+                <td class="px-3 py-3">
+                    <select class="product-handling w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">无</option>
+                        <option value="fragile">易碎品</option>
+                        <option value="separate">单独包装</option>
+                        <option value="upright">保持直立</option>
+                        <option value="protect">防潮防晒</option>
+                    </select>
+                </td>
+                <td class="px-3 py-3">
+                    <button type="button" class="text-danger hover:text-danger/80 remove-product">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            productsBody.appendChild(newRow);
+            updateRemoveButtons();
+            bindProductEvents();
+        }
+        
+        // 绑定商品行事件
+        function bindProductEvents() {
+            // 绑定删除事件
+            document.querySelectorAll('.remove-product').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (document.querySelectorAll('.product-row').length > 1) {
+                        this.closest('.product-row').remove();
+                        updateRemoveButtons();
+                        updateProductIndices();
+                        updateTotals();
+                    }
+                });
+            });
+            
+            // 绑定数量和重量变更事件
+            document.querySelectorAll('.product-quantity, .product-weight').forEach(input => {
+                input.addEventListener('input', updateTotals);
+            });
+        }
+        
+        // 更新删除按钮状态
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.product-row');
+            const removeButtons = document.querySelectorAll('.remove-product');
+            
+            if (rows.length <= 1) {
+                removeButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                });
+            } else {
+                removeButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            }
+        }
+        
+        // 更新商品序号
+        function updateProductIndices() {
+            const rows = document.querySelectorAll('.product-row');
+            rows.forEach((row, index) => {
+                row.querySelector('.product-index').textContent = index + 1;
+            });
+        }
+        
+        // 更新总计
+        function updateTotals() {
+            let totalQuantity = 0;
+            let totalWeight = 0;
+            
+            document.querySelectorAll('.product-row').forEach(row => {
+                totalQuantity += parseInt(row.querySelector('.product-quantity').value) || 0;
+                totalWeight += parseFloat(row.querySelector('.product-weight').value) || 0;
+            });
+            
+            totalQuantityEl.textContent = totalQuantity;
+            totalWeightEl.textContent = totalWeight.toFixed(2);
+        }
+        
+        // 清除错误提示
+        function clearErrors() {
+            // 清除表单错误
+            document.querySelectorAll('[id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            
+            // 清除输入框错误状态
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.classList.remove('input-error');
+            });
+            
+            // 清除商品行错误
+            document.querySelectorAll('.product-code-error, .product-name-error, .product-unit-error, .product-quantity-error').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+        
+        // 显示错误信息
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示商品行错误
+        function showProductRowError(inputEl, errorEl, message) {
+            inputEl.classList.add('input-error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 验证基本信息（保存草稿用）
+        function validateBasicInfo() {
+            let isValid = true;
+            clearErrors();
+            
+            // 关联订单号验证
+            const relatedOrderNo = document.getElementById('relatedOrderNo');
+            if (!relatedOrderNo.value.trim()) {
+                showError(relatedOrderNo, 'relatedOrderNoError', '请输入关联订单号');
+                isValid = false;
+            }
+            
+            // 打包日期验证
+            const packDate = document.getElementById('packDate');
+            if (!packDate.value) {
+                showError(packDate, 'packDateError', '请选择打包日期');
+                isValid = false;
+            }
+            
+            // 打包状态验证
+            const packStatus = document.getElementById('packStatus');
+            if (!packStatus.value) {
+                showError(packStatus, 'packStatusError', '请选择打包状态');
+                isValid = false;
+            }
+            
+            // 打包员验证
+            const packer = document.getElementById('packer');
+            if (!packer.value.trim()) {
+                showError(packer, 'packerError', '请输入打包员姓名');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证标记为打包中
+        function validateInProgress() {
+            let isValid = true;
+            clearErrors();
+            
+            // 先验证基本信息
+            if (!validateBasicInfo()) {
+                isValid = false;
+            }
+            
+            // 打包类型验证
+            const packType = document.getElementById('packType');
+            if (!packType.value) {
+                showError(packType, 'packTypeError', '请选择打包类型');
+                isValid = false;
+            }
+            
+            // 包装盒类型验证
+            const boxType = document.getElementById('boxType');
+            if (!boxType.value) {
+                showError(boxType, 'boxTypeError', '请选择包装盒类型');
+                isValid = false;
+            }
+            
+            // 包装盒数量验证
+            const boxQuantity = document.getElementById('boxQuantity');
+            if (!boxQuantity.value || boxQuantity.value <= 0) {
+                showError(boxQuantity, 'boxQuantityError', '请输入有效的包装盒数量');
+                isValid = false;
+            }
+            
+            // 商品明细验证
+            const productRows = document.querySelectorAll('.product-row');
+            if (productRows.length === 0) {
+                document.getElementById('productsError').classList.remove('hidden');
+                isValid = false;
+            } else {
+                let hasValidProduct = false;
+                
+                productRows.forEach(row => {
+                    // 商品编码验证
+                    const codeInput = row.querySelector('.product-code');
+                    const codeError = row.querySelector('.product-code-error');
+                    if (!codeInput.value.trim()) {
+                        showProductRowError(codeInput, codeError, '商品编码不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 商品名称验证
+                    const nameInput = row.querySelector('.product-name');
+                    const nameError = row.querySelector('.product-name-error');
+                    if (!nameInput.value.trim()) {
+                        showProductRowError(nameInput, nameError, '商品名称不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 单位验证
+                    const unitInput = row.querySelector('.product-unit');
+                    const unitError = row.querySelector('.product-unit-error');
+                    if (!unitInput.value.trim()) {
+                        showProductRowError(unitInput, unitError, '单位不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 数量验证
+                    const quantityInput = row.querySelector('.product-quantity');
+                    const quantityError = row.querySelector('.product-quantity-error');
+                    if (!quantityInput.value || quantityInput.value <= 0) {
+                        showProductRowError(quantityInput, quantityError, '请输入有效的商品数量');
+                        isValid = false;
+                    } else {
+                        hasValidProduct = true;
+                    }
+                });
+                
+                // 验证是否有至少一个有效的商品
+                if (!hasValidProduct) {
+                    showToast('至少需要添加一个有效的商品才能开始打包', 'error');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // 验证完成打包
+        function validateComplete() {
+            let isValid = true;
+            clearErrors();
+            
+            // 先验证打包中的条件
+            if (!validateInProgress()) {
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // 检查是否所有商品都填写了包装位置
+                const productRows = document.querySelectorAll('.product-row');
+                productRows.forEach(row => {
+                    const positionInput = row.querySelector('.product-position');
+                    if (!positionInput.value.trim()) {
+                        positionInput.classList.add('input-error');
+                        showToast('请为所有商品指定包装位置', 'error');
+                        isValid = false;
+                    }
+                });
+                
+                // 检查是否已检验
+                const inspectResult = document.querySelector('input[name="inspectResult"]:checked').value;
+                if (inspectResult === 'pending') {
+                    showToast('请先完成打包检验', 'error');
+                    isValid = false;
+                } else if (inspectResult === 'failed') {
+                    showToast('检验未通过，不能标记为完成打包', 'error');
+                    isValid = false;
+                }
+                
+                // 检查是否填写了检验员
+                const inspector = document.getElementById('inspector');
+                if (!inspector.value.trim() && inspectResult === 'passed') {
+                    showError(inspector, 'inspectorError', '请填写检验员姓名');
+                    isValid = false;
+                }
+                
+                // 检查是否填写了检验日期
+                const inspectDate = document.getElementById('inspectDate');
+                if (!inspectDate.value && inspectResult === 'passed') {
+                    showError(inspectDate, 'inspectDateError', '请选择检验日期');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库位管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C',
+                        light: '#F2F3F5',
+                        dark: '#1D2129'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card {
+                @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary/50;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90 focus:ring-success/50;
+            }
+            .btn-warning {
+                @apply bg-warning text-white hover:bg-warning/90 focus:ring-warning/50;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90 focus:ring-danger/50;
+            }
+            .btn-outline {
+                @apply border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all;
+            }
+            .form-select {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none bg-white;
+            }
+            .form-error {
+                @apply border-danger focus:ring-danger/50 focus:border-danger;
+            }
+            .table-row-hover {
+                @apply hover:bg-gray-50 transition-colors;
+            }
+            .badge {
+                @apply px-2 py-1 text-xs rounded-full font-medium;
+            }
+            .fade-in {
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            .location-map {
+                @apply grid grid-cols-8 gap-2 my-4 p-4 bg-gray-50 rounded-lg;
+            }
+            .location-cell {
+                @apply aspect-square rounded-md flex items-center justify-center text-sm font-medium cursor-pointer transition-all;
+            }
+            .location-occupied {
+                @apply bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30;
+            }
+            .location-empty {
+                @apply bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200;
+            }
+            .location-disabled {
+                @apply bg-gray-50 text-gray-300 border border-gray-100 cursor-not-allowed;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">库位管理</h1>
+            <p class="text-gray-500 mt-1">管理仓库库位信息、状态及相关操作</p>
+        </div>
+
+        <!-- 操作按钮区 -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div class="relative w-full sm:w-64">
+                <input type="text" id="searchLocation" placeholder="搜索库位..." 
+                       class="form-input pl-10">
+                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <div class="flex gap-3">
+                <button id="addLocationBtn" class="btn btn-primary flex items-center gap-2">
+                    <i class="fa fa-plus"></i>
+                    <span>新增库位</span>
+                </button>
+                <button id="batchDeleteBtn" class="btn btn-danger flex items-center gap-2" disabled>
+                    <i class="fa fa-trash"></i>
+                    <span>批量删除</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 仓库选择 -->
+        <div class="card mb-6">
+            <div class="p-4 border-b border-gray-100">
+                <h3 class="font-semibold text-gray-800">仓库选择</h3>
+            </div>
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="col-span-1">
+                        <label for="warehouseSelect" class="block text-sm font-medium text-gray-700 mb-1">选择仓库</label>
+                        <select id="warehouseSelect" class="form-select">
+                            <option value="all">所有仓库</option>
+                            <option value="1">一号仓库</option>
+                            <option value="2">二号仓库</option>
+                            <option value="3">三号仓库</option>
+                            <option value="4">四号仓库</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <label for="zoneSelect" class="block text-sm font-medium text-gray-700 mb-1">选择区域</label>
+                        <select id="zoneSelect" class="form-select">
+                            <option value="all">所有区域</option>
+                            <option value="A">A区</option>
+                            <option value="B">B区</option>
+                            <option value="C">C区</option>
+                            <option value="D">D区</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <label for="shelfSelect" class="block text-sm font-medium text-gray-700 mb-1">选择货架</label>
+                        <select id="shelfSelect" class="form-select">
+                            <option value="all">所有货架</option>
+                            <option value="1">货架1</option>
+                            <option value="2">货架2</option>
+                            <option value="3">货架3</option>
+                            <option value="4">货架4</option>
+                            <option value="5">货架5</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1 flex items-end">
+                        <button id="filterLocationBtn" class="btn btn-primary w-full">
+                            <i class="fa fa-filter mr-1"></i> 筛选
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 库位地图预览 -->
+        <div class="card mb-6">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-semibold text-gray-800">库位分布预览</h3>
+                <div class="text-sm text-gray-500">
+                    <span class="inline-block w-3 h-3 bg-primary/20 border border-primary/30 rounded-sm mr-1"></span>
+                    已占用
+                    <span class="inline-block w-3 h-3 bg-gray-100 border border-gray-200 rounded-sm mr-1 ml-3"></span>
+                    空闲
+                    <span class="inline-block w-3 h-3 bg-gray-50 border border-gray-100 rounded-sm mr-1 ml-3"></span>
+                    禁用
+                </div>
+            </div>
+            <div class="p-4">
+                <div id="locationMap" class="location-map">
+                    <!-- 库位地图将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 库位列表 -->
+        <div class="card mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-4 py-3 text-left w-12">
+                                <input type="checkbox" id="selectAll" class="w-4 h-4 text-primary rounded border-gray-300">
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">库位编码</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">仓库</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">区域</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">货架</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">层数</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">容纳量</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">当前存储</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">状态</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="locationTableBody">
+                        <!-- 库位数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    显示 <span id="showingRange">1-5</span> 条，共 <span id="totalLocations">0</span> 条
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑库位模态框 -->
+    <div id="locationModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden fade-in">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-semibold">新增库位</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="locationForm" class="p-5 space-y-4">
+                <input type="hidden" id="locationId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="locationCode" class="block text-sm font-medium text-gray-700 mb-1">
+                            库位编码 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="locationCode" class="form-input" placeholder="例如：WH1-A-01-03">
+                        <p id="locationCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="warehouse" class="block text-sm font-medium text-gray-700 mb-1">
+                            所属仓库 <span class="text-danger">*</span>
+                        </label>
+                        <select id="warehouse" class="form-select">
+                            <option value="">请选择仓库</option>
+                            <option value="1">一号仓库</option>
+                            <option value="2">二号仓库</option>
+                            <option value="3">三号仓库</option>
+                            <option value="4">四号仓库</option>
+                        </select>
+                        <p id="warehouseError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="zone" class="block text-sm font-medium text-gray-700 mb-1">
+                            区域 <span class="text-danger">*</span>
+                        </label>
+                        <select id="zone" class="form-select">
+                            <option value="">请选择区域</option>
+                            <option value="A">A区</option>
+                            <option value="B">B区</option>
+                            <option value="C">C区</option>
+                            <option value="D">D区</option>
+                        </select>
+                        <p id="zoneError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="shelf" class="block text-sm font-medium text-gray-700 mb-1">
+                            货架 <span class="text-danger">*</span>
+                        </label>
+                        <select id="shelf" class="form-select">
+                            <option value="">请选择货架</option>
+                            <option value="1">货架1</option>
+                            <option value="2">货架2</option>
+                            <option value="3">货架3</option>
+                            <option value="4">货架4</option>
+                            <option value="5">货架5</option>
+                        </select>
+                        <p id="shelfError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="level" class="block text-sm font-medium text-gray-700 mb-1">
+                            层数 <span class="text-danger">*</span>
+                        </label>
+                        <select id="level" class="form-select">
+                            <option value="">请选择层数</option>
+                            <option value="1">1层</option>
+                            <option value="2">2层</option>
+                            <option value="3">3层</option>
+                            <option value="4">4层</option>
+                            <option value="5">5层</option>
+                            <option value="6">6层</option>
+                        </select>
+                        <p id="levelError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="capacity" class="block text-sm font-medium text-gray-700 mb-1">
+                            最大容纳量 <span class="text-danger">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="capacity" class="form-input pl-8" placeholder="请输入最大容纳量" min="1">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">个</span>
+                        </div>
+                        <p id="capacityError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="currentStock" class="block text-sm font-medium text-gray-700 mb-1">
+                            当前存储量
+                        </label>
+                        <div class="relative">
+                            <input type="number" id="currentStock" class="form-input pl-8" placeholder="请输入当前存储量" min="0">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">个</span>
+                        </div>
+                        <p id="currentStockError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="locationType" class="block text-sm font-medium text-gray-700 mb-1">
+                        库位类型
+                    </label>
+                    <select id="locationType" class="form-select">
+                        <option value="normal">普通库位</option>
+                        <option value="frozen">冷藏库位</option>
+                        <option value="valuable">贵重物品库位</option>
+                        <option value="bulk">大宗物品库位</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                        库位描述
+                    </label>
+                    <textarea id="description" rows="3" class="form-input" placeholder="请输入库位描述信息"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        状态 <span class="text-danger">*</span>
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="active" checked class="w-4 h-4 text-primary">
+                            <span>启用</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="inactive" class="w-4 h-4 text-primary">
+                            <span>禁用</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" id="cancelBtn" class="btn btn-outline">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden fade-in">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
+            <h3 class="text-lg font-semibold mb-3">确认删除</h3>
+            <p class="text-gray-600 mb-5" id="deleteConfirmText">您确定要删除选中的库位吗？此操作不可恢复。</p>
+            <input type="hidden" id="deleteLocationId">
+            <div class="flex justify-end gap-3">
+                <button id="cancelDeleteBtn" class="btn btn-outline">取消</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // 模拟库位数据
+        let locations = [
+            { 
+                id: 1, 
+                code: 'WH1-A-01-01', 
+                warehouse: '1',
+                warehouseName: '一号仓库',
+                zone: 'A',
+                shelf: '1',
+                level: '1',
+                capacity: 50,
+                currentStock: 35,
+                type: 'normal',
+                typeName: '普通库位',
+                description: '位于一号仓库A区1号货架1层',
+                status: 'active',
+                createdAt: '2023-01-15'
+            },
+            { 
+                id: 2, 
+                code: 'WH1-A-01-02', 
+                warehouse: '1',
+                warehouseName: '一号仓库',
+                zone: 'A',
+                shelf: '1',
+                level: '2',
+                capacity: 50,
+                currentStock: 50,
+                type: 'normal',
+                typeName: '普通库位',
+                description: '位于一号仓库A区1号货架2层',
+                status: 'active',
+                createdAt: '2023-01-15'
+            },
+            { 
+                id: 3, 
+                code: 'WH1-A-01-03', 
+                warehouse: '1',
+                warehouseName: '一号仓库',
+                zone: 'A',
+                shelf: '1',
+                level: '3',
+                capacity: 50,
+                currentStock: 0,
+                type: 'normal',
+                typeName: '普通库位',
+                description: '位于一号仓库A区1号货架3层',
+                status: 'active',
+                createdAt: '2023-01-15'
+            },
+            { 
+                id: 4, 
+                code: 'WH1-B-02-01', 
+                warehouse: '1',
+                warehouseName: '一号仓库',
+                zone: 'B',
+                shelf: '2',
+                level: '1',
+                capacity: 100,
+                currentStock: 78,
+                type: 'bulk',
+                typeName: '大宗物品库位',
+                description: '位于一号仓库B区2号货架1层，用于存放大宗物品',
+                status: 'active',
+                createdAt: '2023-01-20'
+            },
+            { 
+                id: 5, 
+                code: 'WH2-C-03-02', 
+                warehouse: '2',
+                warehouseName: '二号仓库',
+                zone: 'C',
+                shelf: '3',
+                level: '2',
+                capacity: 30,
+                currentStock: 15,
+                type: 'frozen',
+                typeName: '冷藏库位',
+                description: '位于二号仓库C区3号货架2层，冷藏环境',
+                status: 'active',
+                createdAt: '2023-02-05'
+            },
+            { 
+                id: 6, 
+                code: 'WH3-D-01-01', 
+                warehouse: '3',
+                warehouseName: '三号仓库',
+                zone: 'D',
+                shelf: '1',
+                level: '1',
+                capacity: 20,
+                currentStock: 10,
+                type: 'valuable',
+                typeName: '贵重物品库位',
+                description: '位于三号仓库D区1号货架1层，存放贵重物品',
+                status: 'active',
+                createdAt: '2023-02-10'
+            },
+            { 
+                id: 7, 
+                code: 'WH1-A-02-01', 
+                warehouse: '1',
+                warehouseName: '一号仓库',
+                zone: 'A',
+                shelf: '2',
+                level: '1',
+                capacity: 50,
+                currentStock: 0,
+                type: 'normal',
+                typeName: '普通库位',
+                description: '位于一号仓库A区2号货架1层，因维护暂时禁用',
+                status: 'inactive',
+                createdAt: '2023-01-15'
+            }
+        ];
+
+        // 分页配置
+        const pageSize = 5;
+        let currentPage = 1;
+        let filteredLocations = [...locations];
+
+        // DOM元素
+        const locationTableBody = document.getElementById('locationTableBody');
+        const locationMap = document.getElementById('locationMap');
+        const addLocationBtn = document.getElementById('addLocationBtn');
+        const locationModal = document.getElementById('locationModal');
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const locationForm = document.getElementById('locationForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const locationIdInput = document.getElementById('locationId');
+        const confirmModal = document.getElementById('confirmModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteLocationIdInput = document.getElementById('deleteLocationId');
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        const searchInput = document.getElementById('searchLocation');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const paginationContainer = document.getElementById('pagination');
+        const showingRangeText = document.getElementById('showingRange');
+        const totalLocationsText = document.getElementById('totalLocations');
+        const toast = document.getElementById('toast');
+        const warehouseSelect = document.getElementById('warehouseSelect');
+        const zoneSelect = document.getElementById('zoneSelect');
+        const shelfSelect = document.getElementById('shelfSelect');
+        const filterLocationBtn = document.getElementById('filterLocationBtn');
+
+        // 仓库名称映射
+        const warehouseMap = {
+            '1': '一号仓库',
+            '2': '二号仓库',
+            '3': '三号仓库',
+            '4': '四号仓库'
+        };
+
+        // 库位类型映射
+        const typeMap = {
+            'normal': '普通库位',
+            'frozen': '冷藏库位',
+            'valuable': '贵重物品库位',
+            'bulk': '大宗物品库位'
+        };
+
+        // 状态样式映射
+        const statusMap = {
+            'active': { text: '启用', class: 'bg-success/10 text-success' },
+            'inactive': { text: '禁用', class: 'bg-gray-100 text-gray-500' }
+        };
+
+        // 初始化页面
+        function init() {
+            renderLocationTable();
+            renderLocationMap();
+            setupEventListeners();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 打开新增库位模态框
+            addLocationBtn.addEventListener('click', () => {
+                openLocationModal();
+            });
+
+            // 关闭模态框
+            closeModal.addEventListener('click', closeLocationModal);
+            cancelBtn.addEventListener('click', closeLocationModal);
+
+            // 提交库位表单
+            locationForm.addEventListener('submit', handleFormSubmit);
+
+            // 确认删除相关
+            cancelDeleteBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+
+            confirmDeleteBtn.addEventListener('click', () => {
+                const locationId = parseInt(deleteLocationIdInput.value);
+                deleteLocation(locationId);
+                confirmModal.classList.add('hidden');
+            });
+
+            // 全选 checkbox
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+
+            // 搜索库位
+            searchInput.addEventListener('input', handleSearch);
+
+            // 筛选库位
+            filterLocationBtn.addEventListener('click', handleFilter);
+
+            // 分页按钮
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+        }
+
+        // 渲染库位表格
+        function renderLocationTable() {
+            // 计算分页
+            const totalPages = Math.ceil(filteredLocations.length / pageSize);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredLocations.length);
+            const currentLocations = filteredLocations.slice(startIndex, endIndex);
+
+            // 更新显示范围和总数
+            showingRangeText.textContent = filteredLocations.length > 0 ? `${startIndex + 1}-${endIndex}` : '0-0';
+            totalLocationsText.textContent = filteredLocations.length;
+
+            // 清空表格
+            locationTableBody.innerHTML = '';
+
+            // 没有数据时显示空状态
+            if (currentLocations.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="10" class="px-4 py-10 text-center text-gray-500">
+                        <i class="fa fa-cubes text-3xl mb-2 block"></i>
+                        没有找到匹配的库位
+                    </td>
+                `;
+                locationTableBody.appendChild(emptyRow);
+            } else {
+                // 渲染库位数据
+                currentLocations.forEach(location => {
+                    // 库存预警判断（超过80%容量）
+                    const isStockFull = location.currentStock / location.capacity >= 0.8 && location.capacity > 0;
+                    
+                    const row = document.createElement('tr');
+                    row.className = `border-b border-gray-100 table-row-hover ${isStockFull ? 'bg-warning/5' : ''}`;
+                    row.innerHTML = `
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="location-checkbox w-4 h-4 text-primary rounded border-gray-300" 
+                                   data-id="${location.id}">
+                        </td>
+                        <td class="px-4 py-3 font-medium">${location.code}</td>
+                        <td class="px-4 py-3">${location.warehouseName}</td>
+                        <td class="px-4 py-3">${location.zone}区</td>
+                        <td class="px-4 py-3">货架${location.shelf}</td>
+                        <td class="px-4 py-3">${location.level}层</td>
+                        <td class="px-4 py-3">${location.capacity}个</td>
+                        <td class="px-4 py-3 ${isStockFull ? 'text-warning font-medium' : ''}">
+                            ${location.currentStock}个
+                            ${isStockFull ? '<i class="fa fa-exclamation-circle ml-1"></i>' : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="badge ${statusMap[location.status].class}">${statusMap[location.status].text}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button class="text-primary hover:text-primary/80" 
+                                        onclick="editLocation(${location.id})">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="text-danger hover:text-danger/80" 
+                                        onclick="openDeleteConfirm(${location.id})">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <button class="text-gray-500 hover:text-gray-700"
+                                        onclick="toggleLocationStatus(${location.id}, '${location.status}')">
+                                    <i class="fa ${location.status === 'active' ? 'fa-lock' : 'fa-unlock'}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    locationTableBody.appendChild(row);
+                });
+
+                // 为库位行的checkbox添加事件监听
+                document.querySelectorAll('.location-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateBatchDeleteButton);
+                });
+            }
+
+            // 渲染分页
+            renderPagination(totalPages);
+
+            // 更新分页按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+
+        // 渲染库位地图
+        function renderLocationMap() {
+            // 清空地图
+            locationMap.innerHTML = '';
+            
+            // 只显示当前筛选条件下的前32个库位
+            const displayLocations = filteredLocations.slice(0, 32);
+            
+            // 如果库位不足32个，补充空库位
+            const emptyLocationsCount = Math.max(0, 32 - displayLocations.length);
+            
+            // 添加实际库位
+            displayLocations.forEach(location => {
+                const cell = document.createElement('div');
+                const cellClass = location.status === 'active' 
+                    ? (location.currentStock > 0 ? 'location-occupied' : 'location-empty')
+                    : 'location-disabled';
+                
+                cell.className = `location-cell ${cellClass}`;
+                cell.textContent = location.code.split('-').pop(); // 只显示最后一部分编码
+                cell.title = `${location.warehouseName} ${location.zone}区 货架${location.shelf} ${location.level}层`;
+                cell.addEventListener('click', () => editLocation(location.id));
+                locationMap.appendChild(cell);
+            });
+            
+            // 添加空库位
+            for (let i = 0; i < emptyLocationsCount; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'location-cell location-empty';
+                cell.textContent = '';
+                locationMap.appendChild(cell);
+            }
+        }
+
+        // 渲染分页
+        function renderPagination(totalPages) {
+            paginationContainer.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            // 添加第一页按钮（如果当前范围不包含第一页）
+            if (startPage > 1) {
+                addPageButton(1);
+                if (startPage > 2) {
+                    addEllipsis();
+                }
+            }
+            
+            // 添加中间页码
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(i);
+            }
+            
+            // 添加最后一页按钮（如果当前范围不包含最后一页）
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    addEllipsis();
+                }
+                addPageButton(totalPages);
+            }
+        }
+
+        // 添加页码按钮
+        function addPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.className = `btn btn-outline px-3 py-1 ${currentPage === pageNum ? 'bg-primary text-white border-primary' : ''}`;
+            button.textContent = pageNum;
+            button.addEventListener('click', () => {
+                currentPage = pageNum;
+                renderLocationTable();
+            });
+            paginationContainer.appendChild(button);
+        }
+
+        // 添加省略号
+        function addEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'flex items-center px-2 text-gray-500';
+            ellipsis.textContent = '...';
+            paginationContainer.appendChild(ellipsis);
+        }
+
+        // 上一页
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderLocationTable();
+            }
+        }
+
+        // 下一页
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredLocations.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderLocationTable();
+            }
+        }
+
+        // 打开库位模态框
+        function openLocationModal(locationId = null) {
+            // 重置表单和错误信息
+            locationForm.reset();
+            clearFormErrors();
+            locationIdInput.value = '';
+            
+            if (locationId) {
+                // 编辑库位
+                modalTitle.textContent = '编辑库位';
+                const location = locations.find(l => l.id === locationId);
+                if (location) {
+                    locationIdInput.value = location.id;
+                    document.getElementById('locationCode').value = location.code;
+                    document.getElementById('warehouse').value = location.warehouse;
+                    document.getElementById('zone').value = location.zone;
+                    document.getElementById('shelf').value = location.shelf;
+                    document.getElementById('level').value = location.level;
+                    document.getElementById('capacity').value = location.capacity;
+                    document.getElementById('currentStock').value = location.currentStock;
+                    document.getElementById('locationType').value = location.type;
+                    document.getElementById('description').value = location.description || '';
+                    
+                    // 设置状态
+                    document.querySelector(`input[name="status"][value="${location.status}"]`).checked = true;
+                    
+                    // 编辑时库位编码只读
+                    document.getElementById('locationCode').setAttribute('readonly', 'readonly');
+                }
+            } else {
+                // 新增库位
+                modalTitle.textContent = '新增库位';
+                document.getElementById('locationCode').removeAttribute('readonly');
+            }
+            
+            locationModal.classList.remove('hidden');
+        }
+
+        // 关闭库位模态框
+        function closeLocationModal() {
+            locationModal.classList.add('hidden');
+        }
+
+        // 处理表单提交
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (validateForm()) {
+                const locationId = locationIdInput.value;
+                const warehouse = document.getElementById('warehouse').value;
+                const locationType = document.getElementById('locationType').value;
+                
+                const locationData = {
+                    code: document.getElementById('locationCode').value.trim(),
+                    warehouse: warehouse,
+                    warehouseName: warehouseMap[warehouse],
+                    zone: document.getElementById('zone').value,
+                    shelf: document.getElementById('shelf').value,
+                    level: document.getElementById('level').value,
+                    capacity: parseInt(document.getElementById('capacity').value),
+                    currentStock: document.getElementById('currentStock').value ? parseInt(document.getElementById('currentStock').value) : 0,
+                    type: locationType,
+                    typeName: typeMap[locationType],
+                    description: document.getElementById('description').value.trim(),
+                    status: document.querySelector('input[name="status"]:checked').value
+                };
+                
+                if (!locationId) {
+                    // 新增库位
+                    locationData.id = Date.now();
+                    locationData.createdAt = new Date().toLocaleDateString('zh-CN');
+                    locations.push(locationData);
+                    showToast('库位添加成功', 'success');
+                } else {
+                    // 编辑库位
+                    const index = locations.findIndex(l => l.id === parseInt(locationId));
+                    if (index !== -1) {
+                        // 保留创建时间
+                        locationData.createdAt = locations[index].createdAt;
+                        locations[index] = { ...locationData, id: parseInt(locationId) };
+                        showToast('库位更新成功', 'success');
+                    }
+                }
+                
+                // 刷新表格、地图并关闭模态框
+                filterLocations();
+                renderLocationTable();
+                renderLocationMap();
+                closeLocationModal();
+            }
+        }
+
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            clearFormErrors();
+            
+            // 验证库位编码
+            const locationCode = document.getElementById('locationCode').value.trim();
+            if (!locationCode) {
+                showError('locationCode', '请输入库位编码');
+                isValid = false;
+            } else if (locationCode.length < 5 || locationCode.length > 20) {
+                showError('locationCode', '库位编码长度应在5-20个字符之间');
+                isValid = false;
+            } else if (!locationIdInput.value && locations.some(l => l.code === locationCode)) {
+                showError('locationCode', '该库位编码已被使用');
+                isValid = false;
+            }
+            
+            // 验证仓库
+            const warehouse = document.getElementById('warehouse').value;
+            if (!warehouse) {
+                showError('warehouse', '请选择所属仓库');
+                isValid = false;
+            }
+            
+            // 验证区域
+            const zone = document.getElementById('zone').value;
+            if (!zone) {
+                showError('zone', '请选择区域');
+                isValid = false;
+            }
+            
+            // 验证货架
+            const shelf = document.getElementById('shelf').value;
+            if (!shelf) {
+                showError('shelf', '请选择货架');
+                isValid = false;
+            }
+            
+            // 验证层数
+            const level = document.getElementById('level').value;
+            if (!level) {
+                showError('level', '请选择层数');
+                isValid = false;
+            }
+            
+            // 验证最大容纳量
+            const capacity = document.getElementById('capacity').value;
+            if (!capacity) {
+                showError('capacity', '请输入最大容纳量');
+                isValid = false;
+            } else if (isNaN(capacity) || parseInt(capacity) < 1) {
+                showError('capacity', '请输入有效的最大容纳量（至少1）');
+                isValid = false;
+            }
+            
+            // 验证当前存储量（如果填写）
+            const currentStock = document.getElementById('currentStock').value;
+            if (currentStock) {
+                const capacityValue = parseInt(capacity) || 0;
+                if (isNaN(currentStock) || parseInt(currentStock) < 0) {
+                    showError('currentStock', '请输入有效的当前存储量');
+                    isValid = false;
+                } else if (parseInt(currentStock) > capacityValue) {
+                    showError('currentStock', '当前存储量不能超过最大容纳量');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+
+        // 显示错误信息
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(`${fieldId}Error`);
+            
+            field.classList.add('form-error');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        // 清除表单错误
+        function clearFormErrors() {
+            ['locationCode', 'warehouse', 'zone', 'shelf', 'level', 'capacity', 'currentStock'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const errorElement = document.getElementById(`${fieldId}Error`);
+                
+                field.classList.remove('form-error');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                    errorElement.textContent = '';
+                }
+            });
+        }
+
+        // 打开删除确认
+        function openDeleteConfirm(locationId) {
+            deleteLocationIdInput.value = locationId;
+            
+            const location = locations.find(l => l.id === locationId);
+            if (location && location.currentStock > 0) {
+                document.getElementById('deleteConfirmText').textContent = 
+                    `该库位"${location.code}"当前存储有${location.currentStock}个物品，确定要删除吗？此操作不可恢复。`;
+            } else {
+                document.getElementById('deleteConfirmText').textContent = 
+                    `您确定要删除库位"${location ? location.code : ''}"吗？此操作不可恢复。`;
+            }
+            
+            confirmModal.classList.remove('hidden');
+        }
+
+        // 删除库位
+        function deleteLocation(locationId) {
+            const initialLength = locations.length;
+            locations = locations.filter(location => location.id !== locationId);
+            
+            if (locations.length < initialLength) {
+                showToast('库位已删除', 'success');
+                filterLocations();
+                renderLocationTable();
+                renderLocationMap();
+            }
+        }
+
+        // 编辑库位
+        function editLocation(locationId) {
+            openLocationModal(locationId);
+        }
+
+        // 切换库位状态
+        function toggleLocationStatus(locationId, currentStatus) {
+            const index = locations.findIndex(location => location.id === locationId);
+            if (index !== -1) {
+                const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                locations[index].status = newStatus;
+                showToast(`库位已${newStatus === 'active' ? '启用' : '禁用'}`, 'success');
+                renderLocationTable();
+                renderLocationMap();
+            }
+        }
+
+        // 处理全选
+        function handleSelectAll() {
+            const isChecked = selectAllCheckbox.checked;
+            document.querySelectorAll('.location-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量删除按钮状态
+        function updateBatchDeleteButton() {
+            const checkedCount = document.querySelectorAll('.location-checkbox:checked').length;
+            batchDeleteBtn.disabled = checkedCount === 0;
+            
+            // 更新全选框状态
+            const totalCheckboxes = document.querySelectorAll('.location-checkbox').length;
+            selectAllCheckbox.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+        }
+
+        // 处理搜索
+        function handleSearch() {
+            filterLocations();
+            currentPage = 1; // 重置到第一页
+            renderLocationTable();
+            renderLocationMap();
+        }
+
+        // 处理筛选
+        function handleFilter() {
+            filterLocations();
+            currentPage = 1; // 重置到第一页
+            renderLocationTable();
+            renderLocationMap();
+        }
+
+        // 过滤库位
+        function filterLocations() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            const warehouse = warehouseSelect.value;
+            const zone = zoneSelect.value;
+            const shelf = shelfSelect.value;
+            
+            filteredLocations = locations.filter(location => {
+                // 搜索词过滤
+                const matchesSearch = !searchTerm || 
+                    location.code.toLowerCase().includes(searchTerm) || 
+                    location.warehouseName.toLowerCase().includes(searchTerm) ||
+                    location.description.toLowerCase().includes(searchTerm);
+                
+                // 仓库过滤
+                const matchesWarehouse = warehouse === 'all' || location.warehouse === warehouse;
+                
+                // 区域过滤
+                const matchesZone = zone === 'all' || location.zone === zone;
+                
+                // 货架过滤
+                const matchesShelf = shelf === 'all' || location.shelf === shelf;
+                
+                return matchesSearch && matchesWarehouse && matchesZone && matchesShelf;
+            });
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 暴露函数到全局，供HTML中直接调用
+        window.editLocation = editLocation;
+        window.openDeleteConfirm = openDeleteConfirm;
+        window.toggleLocationStatus = toggleLocationStatus;
+    </script>
+</body>
+</html>
+    

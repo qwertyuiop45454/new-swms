@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存查询</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C'
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card { @apply bg-white rounded-lg shadow-sm border border-gray-100; }
+            .btn { @apply px-4 py-2 rounded-md font-medium transition-all; }
+            .btn-primary { @apply bg-primary text-white hover:bg-primary/90; }
+            .btn-outline { @apply border border-gray-300 hover:bg-gray-50; }
+            .form-input { @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:border-primary focus:ring-1 focus:ring-primary transition-all; }
+            .form-select { @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:border-primary focus:ring-1 focus:ring-primary transition-all; }
+            .form-error { @apply border-danger focus:border-danger focus:ring-danger/20; }
+            .badge { @apply px-2 py-1 text-xs rounded-full font-medium; }
+            .error-text { @apply text-danger text-sm mt-1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-4 md:p-6">
+    <div class="max-w-5xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">库存查询</h1>
+            <p class="text-gray-500 mt-1">快速查询物料库存信息</p>
+        </div>
+
+        <!-- 查询条件 -->
+        <div class="card p-4 mb-6">
+            <h3 class="font-semibold text-gray-800 mb-4">查询条件</h3>
+            <form id="queryForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">物料编码</label>
+                    <input type="text" id="materialCode" class="form-input" placeholder="输入编码关键词">
+                    <p id="materialCodeError" class="error-text hidden"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">物料名称</label>
+                    <input type="text" id="materialName" class="form-input" placeholder="输入名称关键词">
+                    <p id="materialNameError" class="error-text hidden"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">库存状态</label>
+                    <select id="stockStatus" class="form-select">
+                        <option value="">全部状态</option>
+                        <option value="normal">正常库存</option>
+                        <option value="low">低库存</option>
+                        <option value="out">缺货</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">最小数量</label>
+                    <input type="number" id="minQuantity" class="form-input" placeholder="≥数量" min="0">
+                    <p id="minError" class="error-text hidden"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">最大数量</label>
+                    <input type="number" id="maxQuantity" class="form-input" placeholder="≤数量" min="0">
+                    <p id="maxError" class="error-text hidden"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">仓库</label>
+                    <select id="warehouse" class="form-select">
+                        <option value="">全部仓库</option>
+                        <option value="A">A库</option>
+                        <option value="B">B库</option>
+                        <option value="C">C库</option>
+                    </select>
+                </div>
+            </form>
+            <div class="mt-4 flex gap-3 justify-end">
+                <button id="resetBtn" class="btn btn-outline">
+                    <i class="fa fa-refresh mr-1"></i> 重置
+                </button>
+                <button id="queryBtn" class="btn btn-primary">
+                    <i class="fa fa-search mr-1"></i> 查询
+                </button>
+            </div>
+        </div>
+
+        <!-- 结果统计 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="card p-3 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <i class="fa fa-cubes"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">总物料</p>
+                    <p id="totalCount" class="font-bold">0</p>
+                </div>
+            </div>
+            <div class="card p-3 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                    <i class="fa fa-check"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">正常库存</p>
+                    <p id="normalCount" class="font-bold">0</p>
+                </div>
+            </div>
+            <div class="card p-3 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                    <i class="fa fa-exclamation"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">低库存</p>
+                    <p id="lowCount" class="font-bold">0</p>
+                </div>
+            </div>
+            <div class="card p-3 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
+                    <i class="fa fa-times"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500">缺货</p>
+                    <p id="outCount" class="font-bold">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果表格 -->
+        <div class="card mb-6">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-semibold text-gray-800">查询结果</h3>
+                <button id="exportBtn" class="btn btn-outline text-sm" disabled>
+                    <i class="fa fa-download mr-1"></i> 导出
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 text-left">
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">物料编码</th>
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">物料名称</th>
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">规格</th>
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">库存数量</th>
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">仓库</th>
+                            <th class="px-4 py-3 text-sm font-semibold text-gray-700">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultTable">
+                        <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                <i class="fa fa-search text-2xl mb-2 block"></i>
+                                请输入条件进行查询
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg transform translate-x-full opacity-0 transition-all duration-300 flex items-center gap-2 z-50"></div>
+
+    <script>
+        // 模拟库存数据
+        const inventoryData = [
+            { code: 'MAT-001', name: '不锈钢板材', spec: '304, 2mm', quantity: 250, warehouse: 'A', status: 'normal' },
+            { code: 'MAT-002', name: '控制面板', spec: '12cm×8cm', quantity: 12, warehouse: 'B', status: 'low' },
+            { code: 'MAT-003', name: '包装纸盒', spec: '30cm×20cm', quantity: 500, warehouse: 'A', status: 'normal' },
+            { code: 'MAT-004', name: '轴承', spec: '型号6205', quantity: 0, warehouse: 'C', status: 'out' },
+            { code: 'MAT-005', name: '电机', spec: '1.1kW', quantity: 32, warehouse: 'B', status: 'normal' },
+            { code: 'MAT-006', name: '螺丝套件', spec: '多规格', quantity: 15, warehouse: 'A', status: 'low' },
+            { code: 'MAT-007', name: '密封垫片', spec: '耐温120℃', quantity: 0, warehouse: 'C', status: 'out' },
+            { code: 'MAT-008', name: '包装胶带', spec: '50mm×50m', quantity: 78, warehouse: 'B', status: 'normal' }
+        ];
+
+        // 状态样式映射
+        const statusMap = {
+            normal: { text: '正常', class: 'bg-success/10 text-success' },
+            low: { text: '低库存', class: 'bg-warning/10 text-warning' },
+            out: { text: '缺货', class: 'bg-danger/10 text-danger' }
+        };
+
+        // DOM元素
+        const queryForm = document.getElementById('queryForm');
+        const queryBtn = document.getElementById('queryBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const resultTable = document.getElementById('resultTable');
+        const minQuantity = document.getElementById('minQuantity');
+        const maxQuantity = document.getElementById('maxQuantity');
+        const materialCode = document.getElementById('materialCode');
+        const materialName = document.getElementById('materialName');
+        
+        // 错误提示元素
+        const minError = document.getElementById('minError');
+        const maxError = document.getElementById('maxError');
+        const materialCodeError = document.getElementById('materialCodeError');
+        const materialNameError = document.getElementById('materialNameError');
+        
+        const toast = document.getElementById('toast');
+        const totalCount = document.getElementById('totalCount');
+        const normalCount = document.getElementById('normalCount');
+        const lowCount = document.getElementById('lowCount');
+        const outCount = document.getElementById('outCount');
+
+        // 初始化
+        queryBtn.addEventListener('click', handleQuery);
+        resetBtn.addEventListener('click', handleReset);
+        exportBtn.addEventListener('click', handleExport);
+        
+        // 输入框实时验证
+        materialCode.addEventListener('input', () => validateMaterialCode());
+        materialName.addEventListener('input', () => validateMaterialName());
+        minQuantity.addEventListener('input', () => validateQuantityRange());
+        maxQuantity.addEventListener('input', () => validateQuantityRange());
+
+        // 验证物料编码（只能包含字母、数字和横线）
+        function validateMaterialCode() {
+            const value = materialCode.value.trim();
+            const pattern = /^[A-Za-z0-9-]*$/;
+            
+            if (value && !pattern.test(value)) {
+                materialCode.classList.add('form-error');
+                materialCodeError.textContent = '物料编码只能包含字母、数字和横线';
+                materialCodeError.classList.remove('hidden');
+                return false;
+            } else {
+                materialCode.classList.remove('form-error');
+                materialCodeError.classList.add('hidden');
+                return true;
+            }
+        }
+
+        // 验证物料名称（不能包含特殊字符）
+        function validateMaterialName() {
+            const value = materialName.value.trim();
+            const pattern = /^[^<>\/\\:*?"|]+$/;
+            
+            if (value && !pattern.test(value)) {
+                materialName.classList.add('form-error');
+                materialNameError.textContent = '物料名称不能包含特殊字符';
+                materialNameError.classList.remove('hidden');
+                return false;
+            } else {
+                materialName.classList.remove('form-error');
+                materialNameError.classList.add('hidden');
+                return true;
+            }
+        }
+
+        // 验证数量范围
+        function validateQuantityRange() {
+            let isValid = true;
+            const min = Number(minQuantity.value) || 0;
+            const max = Number(maxQuantity.value) || 0;
+
+            // 清除之前的错误状态
+            minQuantity.classList.remove('form-error');
+            maxQuantity.classList.remove('form-error');
+            minError.classList.add('hidden');
+            maxError.classList.add('hidden');
+
+            // 验证最大值不能小于最小值
+            if (max > 0 && min > 0 && max < min) {
+                maxQuantity.classList.add('form-error');
+                maxError.textContent = '最大数量不能小于最小数量';
+                maxError.classList.remove('hidden');
+                isValid = false;
+            }
+            
+            // 验证数值不能过大
+            if (min > 1000000) {
+                minQuantity.classList.add('form-error');
+                minError.textContent = '数量不能超过1,000,000';
+                minError.classList.remove('hidden');
+                isValid = false;
+            }
+            
+            if (max > 1000000) {
+                maxQuantity.classList.add('form-error');
+                maxError.textContent = '数量不能超过1,000,000';
+                maxError.classList.remove('hidden');
+                isValid = false;
+            }
+
+            return isValid;
+        }
+
+        // 完整表单验证
+        function validateForm() {
+            let isValid = true;
+            
+            if (!validateMaterialCode()) isValid = false;
+            if (!validateMaterialName()) isValid = false;
+            if (!validateQuantityRange()) isValid = false;
+            
+            // 检查是否至少填写了一个查询条件
+            const hasQueryCondition = materialCode.value.trim() || 
+                                      materialName.value.trim() ||
+                                      document.getElementById('stockStatus').value ||
+                                      minQuantity.value ||
+                                      maxQuantity.value ||
+                                      document.getElementById('warehouse').value;
+                                      
+            if (!hasQueryCondition) {
+                showToast('请至少填写一个查询条件', 'error');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+
+        // 处理查询
+        function handleQuery() {
+            if (!validateForm()) return;
+
+            const filters = {
+                code: materialCode.value.trim().toLowerCase(),
+                name: materialName.value.trim().toLowerCase(),
+                status: document.getElementById('stockStatus').value,
+                minQty: Number(minQuantity.value) || null,
+                maxQty: Number(maxQuantity.value) || null,
+                warehouse: document.getElementById('warehouse').value
+            };
+
+            // 筛选数据
+            const filtered = inventoryData.filter(item => {
+                if (filters.code && !item.code.toLowerCase().includes(filters.code)) return false;
+                if (filters.name && !item.name.toLowerCase().includes(filters.name)) return false;
+                if (filters.status && item.status !== filters.status) return false;
+                if (filters.minQty !== null && item.quantity < filters.minQty) return false;
+                if (filters.maxQty !== null && item.quantity > filters.maxQty) return false;
+                if (filters.warehouse && item.warehouse !== filters.warehouse) return false;
+                return true;
+            });
+
+            // 更新统计
+            updateStatistics(filtered);
+            // 渲染表格
+            renderTable(filtered);
+            // 更新导出按钮状态
+            exportBtn.disabled = filtered.length === 0;
+            // 显示提示
+            showToast(`找到 ${filtered.length} 条记录`, 'info');
+        }
+
+        // 处理重置
+        function handleReset() {
+            queryForm.reset();
+            
+            // 清除错误状态和提示
+            const errorElements = document.querySelectorAll('.form-error, .error-text:not(.hidden)');
+            errorElements.forEach(el => {
+                if (el.classList.contains('form-error')) {
+                    el.classList.remove('form-error');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+            
+            // 重置表格
+            resultTable.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                        <i class="fa fa-search text-2xl mb-2 block"></i>
+                        请输入条件进行查询
+                    </td>
+                </tr>
+            `;
+            
+            // 重置统计
+            totalCount.textContent = '0';
+            normalCount.textContent = '0';
+            lowCount.textContent = '0';
+            outCount.textContent = '0';
+            
+            // 禁用导出按钮
+            exportBtn.disabled = true;
+        }
+
+        // 处理导出
+        function handleExport() {
+            showToast('数据导出中...', 'info');
+            setTimeout(() => showToast('导出成功', 'success'), 1000);
+        }
+
+        // 渲染结果表格
+        function renderTable(data) {
+            if (data.length === 0) {
+                resultTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fa fa-exclamation-circle text-2xl mb-2 block"></i>
+                            没有找到匹配的库存记录
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                html += `
+                    <tr class="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3">${item.code}</td>
+                        <td class="px-4 py-3">${item.name}</td>
+                        <td class="px-4 py-3">${item.spec}</td>
+                        <td class="px-4 py-3 font-medium">${item.quantity}</td>
+                        <td class="px-4 py-3">${item.warehouse}库</td>
+                        <td class="px-4 py-3">
+                            <span class="badge ${statusMap[item.status].class}">${statusMap[item.status].text}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            resultTable.innerHTML = html;
+        }
+
+        // 更新统计数据
+        function updateStatistics(data) {
+            const total = data.length;
+            const normal = data.filter(item => item.status === 'normal').length;
+            const low = data.filter(item => item.status === 'low').length;
+            const out = data.filter(item => item.status === 'out').length;
+
+            totalCount.textContent = total;
+            normalCount.textContent = normal;
+            lowCount.textContent = low;
+            outCount.textContent = out;
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const icons = {
+                success: 'check-circle',
+                error: 'exclamation-circle',
+                warning: 'exclamation-triangle',
+                info: 'info-circle'
+            };
+            
+            const colors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${icons[type]}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-2 rounded-md shadow-lg transform transition-all duration-300 flex items-center gap-2 z-50 ${colors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+    

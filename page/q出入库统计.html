@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出入库统计</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        success: '#166534',
+                        danger: '#dc2626',
+                        warning: '#c2410c',
+                        neutral: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white overflow-hidden;
+            }
+            .stat-card {
+                @apply card-shadow p-5 transition-all duration-300 hover:shadow-md;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+            .required-mark {
+                @apply text-danger inline-block ml-1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">出入库统计</h1>
+            <p class="text-neutral-500 mt-1">商品出入库记录与数据分析</p>
+        </div>
+
+        <!-- 筛选条件 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-filter text-primary mr-2"></i>统计条件
+            </h2>
+            
+            <form id="statisticsForm" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label for="startDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                        开始日期 <span class="required-mark">*</span>
+                    </label>
+                    <input type="date" id="startDate" 
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="startDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="endDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                        结束日期 <span class="required-mark">*</span>
+                    </label>
+                    <input type="date" id="endDate" 
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="endDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="typeFilter" class="block text-sm font-medium text-neutral-700 mb-1">
+                        出入库类型
+                    </label>
+                    <select id="typeFilter" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">全部类型</option>
+                        <option value="in">入库</option>
+                        <option value="out">出库</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="categoryFilter" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品类别
+                    </label>
+                    <select id="categoryFilter" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">全部类别</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="clothing">服装鞋帽</option>
+                        <option value="food">食品饮料</option>
+                        <option value="home">家居用品</option>
+                        <option value="others">其他类别</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-search mr-1"></i> 统计分析
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 出入库统计概览 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总入库数量</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalInQuantity">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                        <i class="fa fa-arrow-down"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 12.5%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总入库金额(元)</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalInAmount">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 8.3%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总出库数量</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalOutQuantity">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
+                        <i class="fa fa-arrow-up"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 15.2%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总出库金额(元)</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalOutAmount">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 11.7%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表分析区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-bar-chart text-primary mr-2"></i>出入库趋势
+                </h2>
+                <div class="h-80">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-pie-chart text-primary mr-2"></i>类别分布占比
+                </h2>
+                <div class="h-80">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 出入库记录表格 -->
+        <div class="card-shadow mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b border-neutral-200">
+                <h2 class="text-lg font-semibold text-neutral-800">
+                    <i class="fa fa-table text-primary mr-2"></i>出入库记录
+                </h2>
+                <div class="mt-3 sm:mt-0 flex gap-2">
+                    <div class="relative">
+                        <input type="text" id="searchRecords" 
+                               class="pl-9 pr-3 py-2 border border-neutral-300 rounded-md form-input-focus w-full sm:w-64"
+                               placeholder="搜索商品...">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"></i>
+                    </div>
+                    <button id="exportRecords" class="px-4 py-2 border border-primary bg-primary/10 text-primary rounded-md btn-hover">
+                        <i class="fa fa-download mr-1"></i> 导出记录
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-neutral-50">
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">记录编号</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品编码</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品名称</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">类别</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">出入库类型</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">数量</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">单价(元)</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">金额(元)</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">操作日期</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">操作人</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <!-- 出入库记录将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="p-5 border-t border-neutral-200 flex justify-between items-center flex-wrap gap-4">
+                <div class="text-neutral-500 text-sm">
+                    显示 <span id="showingRange">0-0</span> 条，共 <span id="totalItems">0</span> 条记录
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 出入库登记 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-edit text-primary mr-2"></i>出入库登记
+            </h2>
+            
+            <form id="inventoryForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="productCode" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品编码 <span class="required-mark">*</span>
+                    </label>
+                    <input type="text" id="productCode" placeholder="请输入商品编码"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="productCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="productName" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品名称 <span class="required-mark">*</span>
+                    </label>
+                    <input type="text" id="productName" placeholder="请输入商品名称"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="productNameError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="productCategory" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品类别 <span class="required-mark">*</span>
+                    </label>
+                    <select id="productCategory" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">请选择类别</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="clothing">服装鞋帽</option>
+                        <option value="food">食品饮料</option>
+                        <option value="home">家居用品</option>
+                        <option value="others">其他类别</option>
+                    </select>
+                    <p id="productCategoryError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="operationType" class="block text-sm font-medium text-neutral-700 mb-1">
+                        操作类型 <span class="required-mark">*</span>
+                    </label>
+                    <select id="operationType" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">请选择操作类型</option>
+                        <option value="in">入库</option>
+                        <option value="out">出库</option>
+                    </select>
+                    <p id="operationTypeError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="operationQuantity" class="block text-sm font-medium text-neutral-700 mb-1">
+                        数量 <span class="required-mark">*</span>
+                    </label>
+                    <input type="number" min="1" id="operationQuantity" placeholder="请输入数量"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="operationQuantityError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="operationPrice" class="block text-sm font-medium text-neutral-700 mb-1">
+                        单价(元) <span class="required-mark">*</span>
+                    </label>
+                    <input type="number" min="0.01" step="0.01" id="operationPrice" placeholder="请输入单价"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="operationPriceError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div class="md:col-span-3">
+                    <label for="operationRemark" class="block text-sm font-medium text-neutral-700 mb-1">
+                        备注
+                    </label>
+                    <textarea id="operationRemark" rows="2" placeholder="请输入备注信息"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"></textarea>
+                </div>
+                
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-save mr-1"></i> 提交记录
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const statisticsForm = document.getElementById('statisticsForm');
+        const inventoryForm = document.getElementById('inventoryForm');
+        const recordsTableBody = document.getElementById('recordsTableBody');
+        const searchRecords = document.getElementById('searchRecords');
+        const exportRecords = document.getElementById('exportRecords');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const pagination = document.getElementById('pagination');
+        const showingRange = document.getElementById('showingRange');
+        const totalItems = document.getElementById('totalItems');
+        const toast = document.getElementById('toast');
+        
+        // 统计数据元素
+        const totalInQuantityEl = document.getElementById('totalInQuantity');
+        const totalInAmountEl = document.getElementById('totalInAmount');
+        const totalOutQuantityEl = document.getElementById('totalOutQuantity');
+        const totalOutAmountEl = document.getElementById('totalOutAmount');
+        
+        // 图表实例
+        let trendChart = null;
+        let categoryChart = null;
+        
+        // 分页参数
+        const pageSize = 10;
+        let currentPage = 1;
+        let totalPages = 1;
+        let filteredRecords = [];
+        
+        // 模拟出入库记录数据
+        const inventoryRecords = [
+            { id: 'REC001', productId: 'PROD001', productName: '智能手机A1', category: 'electronics', type: 'in', quantity: 50, price: 2799, date: '2023-05-01', operator: '张三' },
+            { id: 'REC002', productId: 'PROD001', productName: '智能手机A1', category: 'electronics', type: 'out', quantity: 15, price: 2999, date: '2023-05-03', operator: '李四' },
+            { id: 'REC003', productId: 'PROD002', productName: '笔记本电脑Pro', category: 'electronics', type: 'in', quantity: 20, price: 5599, date: '2023-05-04', operator: '王五' },
+            { id: 'REC004', productId: 'PROD003', productName: '无线耳机', category: 'electronics', type: 'in', quantity: 100, price: 759, date: '2023-05-05', operator: '赵六' },
+            { id: 'REC005', productId: 'PROD004', productName: '男士T恤', category: 'clothing', type: 'in', quantity: 200, price: 89, date: '2023-05-06', operator: '张三' },
+            { id: 'REC006', productId: 'PROD004', productName: '男士T恤', category: 'clothing', type: 'out', quantity: 45, price: 99, date: '2023-05-07', operator: '李四' },
+            { id: 'REC007', productId: 'PROD005', productName: '牛仔裤', category: 'clothing', type: 'in', quantity: 150, price: 179, date: '2023-05-08', operator: '王五' },
+            { id: 'REC008', productId: 'PROD006', productName: '运动鞋', category: 'clothing', type: 'out', quantity: 20, price: 399, date: '2023-05-09', operator: '赵六' },
+            { id: 'REC009', productId: 'PROD007', productName: '休闲饼干', category: 'food', type: 'in', quantity: 500, price: 14, date: '2023-05-10', operator: '张三' },
+            { id: 'REC010', productId: 'PROD008', productName: '矿泉水', category: 'food', type: 'out', quantity: 100, price: 2, date: '2023-05-11', operator: '李四' },
+            { id: 'REC011', productId: 'PROD009', productName: '巧克力', category: 'food', type: 'in', quantity: 300, price: 11, date: '2023-05-12', operator: '王五' },
+            { id: 'REC012', productId: 'PROD010', productName: '毛巾', category: 'home', type: 'out', quantity: 15, price: 18, date: '2023-05-13', operator: '赵六' },
+            { id: 'REC013', productId: 'PROD011', productName: '洗发水', category: 'home', type: 'in', quantity: 100, price: 40, date: '2023-05-14', operator: '张三' },
+            { id: 'REC014', productId: 'PROD012', productName: '洗衣液', category: 'home', type: 'out', quantity: 8, price: 68, date: '2023-05-15', operator: '李四' },
+            { id: 'REC015', productId: 'PROD013', productName: '钢笔', category: 'others', type: 'in', quantity: 50, price: 32, date: '2023-05-16', operator: '王五' }
+        ];
+
+        // 初始化页面
+        function init() {
+            // 设置默认日期范围为最近30天
+            const today = new Date();
+            const lastMonth = new Date();
+            lastMonth.setDate(today.getDate() - 30);
+            
+            document.getElementById('startDate').value = lastMonth.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            
+            // 初始化图表
+            initCharts();
+            
+            // 加载记录数据
+            filteredRecords = [...inventoryRecords];
+            updateRecordsTable();
+            updateStatistics();
+            
+            // 事件监听
+            statisticsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateStatisticsForm()) {
+                    applyFilters();
+                    currentPage = 1;
+                    updateRecordsTable();
+                    updateStatistics();
+                    updateCharts();
+                }
+            });
+            
+            inventoryForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateInventoryForm()) {
+                    addNewRecord();
+                    showToast('出入库记录添加成功', 'success');
+                    inventoryForm.reset();
+                    // 刷新数据
+                    applyFilters();
+                    updateRecordsTable();
+                    updateStatistics();
+                    updateCharts();
+                }
+            });
+            
+            searchRecords.addEventListener('input', function() {
+                currentPage = 1;
+                updateRecordsTable();
+            });
+            
+            exportRecords.addEventListener('click', function() {
+                showToast('出入库记录导出成功', 'success');
+                // 实际应用中这里会处理导出逻辑
+            });
+            
+            prevPage.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateRecordsTable();
+                }
+            });
+            
+            nextPage.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateRecordsTable();
+                }
+            });
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 出入库趋势图表
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'bar',
+                data: getTrendChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '数量'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+            
+            // 类别分布图表
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: getCategoryChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新图表数据
+        function updateCharts() {
+            trendChart.data = getTrendChartData();
+            trendChart.update();
+            
+            categoryChart.data = getCategoryChartData();
+            categoryChart.update();
+        }
+        
+        // 获取趋势图表数据
+        function getTrendChartData() {
+            // 按日期分组统计
+            const dateMap = {};
+            
+            filteredRecords.forEach(record => {
+                if (!dateMap[record.date]) {
+                    dateMap[record.date] = { in: 0, out: 0 };
+                }
+                if (record.type === 'in') {
+                    dateMap[record.date].in += record.quantity;
+                } else {
+                    dateMap[record.date].out += record.quantity;
+                }
+            });
+            
+            // 排序日期
+            const sortedDates = Object.keys(dateMap).sort();
+            
+            return {
+                labels: sortedDates,
+                datasets: [
+                    {
+                        label: '入库',
+                        data: sortedDates.map(date => dateMap[date].in),
+                        backgroundColor: 'rgba(22, 101, 52, 0.7)',
+                        borderColor: 'rgba(22, 101, 52, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '出库',
+                        data: sortedDates.map(date => dateMap[date].out),
+                        backgroundColor: 'rgba(220, 38, 38, 0.7)',
+                        borderColor: 'rgba(220, 38, 38, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+        }
+        
+        // 获取类别图表数据
+        function getCategoryChartData() {
+            const categoryMap = {
+                'electronics': { name: '电子产品', value: 0 },
+                'clothing': { name: '服装鞋帽', value: 0 },
+                'food': { name: '食品饮料', value: 0 },
+                'home': { name: '家居用品', value: 0 },
+                'others': { name: '其他类别', value: 0 }
+            };
+            
+            // 统计总数量
+            filteredRecords.forEach(record => {
+                if (categoryMap[record.category]) {
+                    categoryMap[record.category].value += record.quantity;
+                }
+            });
+            
+            const labels = [];
+            const data = [];
+            const backgroundColors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899'
+            ];
+            
+            Object.values(categoryMap).forEach((category, index) => {
+                if (category.value > 0) {
+                    labels.push(category.name);
+                    data.push(category.value);
+                }
+            });
+            
+            return {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors.slice(0, labels.length),
+                    borderWidth: 1
+                }]
+            };
+        }
+        
+        // 应用筛选条件
+        function applyFilters() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const type = document.getElementById('typeFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            
+            filteredRecords = inventoryRecords.filter(record => {
+                // 日期筛选
+                const recordDate = new Date(record.date);
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                
+                if (recordDate < start || recordDate > end) {
+                    return false;
+                }
+                
+                // 类型筛选
+                if (type && record.type !== type) {
+                    return false;
+                }
+                
+                // 类别筛选
+                if (category && record.category !== category) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // 更新记录表格
+        function updateRecordsTable() {
+            // 搜索筛选
+            const searchTerm = searchRecords.value.toLowerCase().trim();
+            let dataToShow = filteredRecords.filter(record => 
+                record.id.toLowerCase().includes(searchTerm) || 
+                record.productId.toLowerCase().includes(searchTerm) ||
+                record.productName.toLowerCase().includes(searchTerm)
+            );
+            
+            // 计算分页
+            totalPages = Math.ceil(dataToShow.length / pageSize);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+            
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, dataToShow.length);
+            const paginatedData = dataToShow.slice(startIndex, endIndex);
+            
+            // 更新表格内容
+            recordsTableBody.innerHTML = '';
+            
+            paginatedData.forEach(record => {
+                const typeClass = record.type === 'in' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger';
+                const typeText = record.type === 'in' ? '入库' : '出库';
+                const amount = (record.quantity * record.price).toFixed(2);
+                
+                const row = document.createElement('tr');
+                row.className = 'border-t border-neutral-200 hover:bg-neutral-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-5 py-3">${record.id}</td>
+                    <td class="px-5 py-3">${record.productId}</td>
+                    <td class="px-5 py-3">${record.productName}</td>
+                    <td class="px-5 py-3">${getCategoryName(record.category)}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${typeClass}">${typeText}</span>
+                    </td>
+                    <td class="px-5 py-3">${record.quantity}</td>
+                    <td class="px-5 py-3">${record.price.toFixed(2)}</td>
+                    <td class="px-5 py-3">${amount}</td>
+                    <td class="px-5 py-3">${record.date}</td>
+                    <td class="px-5 py-3">${record.operator}</td>
+                `;
+                recordsTableBody.appendChild(row);
+            });
+            
+            // 更新分页控件
+            updatePagination();
+            
+            // 更新显示信息
+            showingRange.textContent = dataToShow.length > 0 ? 
+                `${startIndex + 1}-${endIndex}` : '0-0';
+            totalItems.textContent = dataToShow.length;
+            
+            // 更新分页按钮状态
+            prevPage.disabled = currentPage <= 1;
+            nextPage.disabled = currentPage >= totalPages || totalPages === 0;
+        }
+        
+        // 更新分页控件
+        function updatePagination() {
+            pagination.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `px-3 py-1 rounded-md text-sm btn-hover ${i === currentPage ? 'bg-primary text-white' : 'border border-neutral-300 text-neutral-700'}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', function() {
+                    currentPage = i;
+                    updateRecordsTable();
+                });
+                pagination.appendChild(pageBtn);
+            }
+        }
+        
+        // 更新统计数据
+        function updateStatistics() {
+            // 计算入库统计
+            const inRecords = filteredRecords.filter(r => r.type === 'in');
+            const totalInQuantity = inRecords.reduce((sum, r) => sum + r.quantity, 0);
+            const totalInAmount = inRecords.reduce((sum, r) => sum + (r.quantity * r.price), 0);
+            
+            // 计算出库统计
+            const outRecords = filteredRecords.filter(r => r.type === 'out');
+            const totalOutQuantity = outRecords.reduce((sum, r) => sum + r.quantity, 0);
+            const totalOutAmount = outRecords.reduce((sum, r) => sum + (r.quantity * r.price), 0);
+            
+            // 更新UI
+            totalInQuantityEl.textContent = totalInQuantity;
+            totalInAmountEl.textContent = totalInAmount.toFixed(2);
+            totalOutQuantityEl.textContent = totalOutQuantity;
+            totalOutAmountEl.textContent = totalOutAmount.toFixed(2);
+        }
+        
+        // 添加新记录
+        function addNewRecord() {
+            const productCode = document.getElementById('productCode').value;
+            const productName = document.getElementById('productName').value;
+            const category = document.getElementById('productCategory').value;
+            const type = document.getElementById('operationType').value;
+            const quantity = parseInt(document.getElementById('operationQuantity').value);
+            const price = parseFloat(document.getElementById('operationPrice').value);
+            const remark = document.getElementById('operationRemark').value;
+            
+            // 生成新记录ID
+            const newId = `REC${(inventoryRecords.length + 1).toString().padStart(3, '0')}`;
+            const today = new Date().toISOString().split('T')[0];
+            
+            // 添加到记录列表
+            inventoryRecords.unshift({
+                id: newId,
+                productId: productCode,
+                productName: productName,
+                category: category,
+                type: type,
+                quantity: quantity,
+                price: price,
+                date: today,
+                operator: '当前用户' // 实际应用中应从登录信息获取
+            });
+        }
+        
+        // 验证统计表单
+        function validateStatisticsForm() {
+            let isValid = true;
+            clearStatisticsErrors();
+            
+            const startDate = document.getElementById('startDate');
+            if (!startDate.value) {
+                showStatisticsError(startDate, 'startDateError', '请选择开始日期');
+                isValid = false;
+            }
+            
+            const endDate = document.getElementById('endDate');
+            if (!endDate.value) {
+                showStatisticsError(endDate, 'endDateError', '请选择结束日期');
+                isValid = false;
+            }
+            
+            // 验证日期逻辑
+            if (isValid && new Date(startDate.value) > new Date(endDate.value)) {
+                showStatisticsError(endDate, 'endDateError', '结束日期不能早于开始日期');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证出入库表单
+        function validateInventoryForm() {
+            let isValid = true;
+            clearInventoryErrors();
+            
+            const productCode = document.getElementById('productCode');
+            if (!productCode.value.trim()) {
+                showInventoryError(productCode, 'productCodeError', '请输入商品编码');
+                isValid = false;
+            }
+            
+            const productName = document.getElementById('productName');
+            if (!productName.value.trim()) {
+                showInventoryError(productName, 'productNameError', '请输入商品名称');
+                isValid = false;
+            }
+            
+            const productCategory = document.getElementById('productCategory');
+            if (!productCategory.value) {
+                showInventoryError(productCategory, 'productCategoryError', '请选择商品类别');
+                isValid = false;
+            }
+            
+            const operationType = document.getElementById('operationType');
+            if (!operationType.value) {
+                showInventoryError(operationType, 'operationTypeError', '请选择操作类型');
+                isValid = false;
+            }
+            
+            const operationQuantity = document.getElementById('operationQuantity');
+            if (!operationQuantity.value || operationQuantity.value <= 0) {
+                showInventoryError(operationQuantity, 'operationQuantityError', '请输入有效的数量');
+                isValid = false;
+            }
+            
+            const operationPrice = document.getElementById('operationPrice');
+            if (!operationPrice.value || operationPrice.value <= 0) {
+                showInventoryError(operationPrice, 'operationPriceError', '请输入有效的单价');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 清除统计表单错误
+        function clearStatisticsErrors() {
+            const elements = [
+                { id: 'startDate', errorId: 'startDateError' },
+                { id: 'endDate', errorId: 'endDateError' }
+            ];
+            
+            elements.forEach(({ id, errorId }) => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(errorId);
+                
+                el.classList.remove('input-error');
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            });
+        }
+        
+        // 清除出入库表单错误
+        function clearInventoryErrors() {
+            const elements = [
+                { id: 'productCode', errorId: 'productCodeError' },
+                { id: 'productName', errorId: 'productNameError' },
+                { id: 'productCategory', errorId: 'productCategoryError' },
+                { id: 'operationType', errorId: 'operationTypeError' },
+                { id: 'operationQuantity', errorId: 'operationQuantityError' },
+                { id: 'operationPrice', errorId: 'operationPriceError' }
+            ];
+            
+            elements.forEach(({ id, errorId }) => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(errorId);
+                
+                el.classList.remove('input-error');
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            });
+        }
+        
+        // 显示统计表单错误
+        function showStatisticsError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示出入库表单错误
+        function showInventoryError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 辅助函数：获取类别名称
+        function getCategoryName(category) {
+            const names = {
+                'electronics': '电子产品',
+                'clothing': '服装鞋帽',
+                'food': '食品饮料',
+                'home': '家居用品',
+                'others': '其他类别'
+            };
+            return names[category] || category;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

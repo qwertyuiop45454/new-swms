@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存预警管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C',
+                        gray: {
+                            100: '#F2F3F5',
+                            200: '#E5E6EB',
+                            300: '#C9CDD4',
+                            400: '#86909C',
+                            500: '#4E5969',
+                            600: '#1D2129',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .table-row-hover {
+                @apply hover:bg-gray-50 transition-colors duration-150;
+            }
+            .badge-pulse {
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.6; }
+                100% { opacity: 1; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-semibold text-gray-600">库存预警管理</h1>
+            <p class="text-gray-400 mt-1">监控库存水平，设置预警阈值，及时处理库存异常</p>
+        </div>
+
+        <!-- 预警统计卡片 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-danger">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">库存不足预警</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1 flex items-center">
+                            8 <span class="ml-2 text-xs bg-danger/10 text-danger px-2 py-0.5 rounded-full badge-pulse">紧急</span>
+                        </p>
+                    </div>
+                    <i class="fa fa-exclamation-circle text-2xl text-danger"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-warning">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">库存偏低预警</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">12</p>
+                    </div>
+                    <i class="fa fa-exclamation-triangle text-2xl text-warning"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-primary">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">已设置预警项</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">45</p>
+                    </div>
+                    <i class="fa fa-bell text-2xl text-primary"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作区和搜索区 -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <button id="addAlertBtn" class="bg-primary text-white px-4 py-2 rounded-md flex items-center btn-hover">
+                <i class="fa fa-plus mr-2"></i>新增预警设置
+            </button>
+            
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+                <div class="relative w-full sm:w-64">
+                    <input type="text" id="searchInput" 
+                           class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="搜索物料名称或编码">
+                    <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+                
+                <select id="categoryFilter" class="w-full sm:w-48 px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                    <option value="">所有类别</option>
+                    <option value="electronics">电子产品</option>
+                    <option value="office">办公用品</option>
+                    <option value="furniture">办公家具</option>
+                    <option value="consumables">耗材</option>
+                </select>
+                
+                <select id="statusFilter" class="w-full sm:w-40 px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                    <option value="">所有状态</option>
+                    <option value="alert">库存不足</option>
+                    <option value="warning">库存偏低</option>
+                    <option value="normal">库存正常</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 预警列表 -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 text-left">
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">物料编码</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">物料名称</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">类别</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">当前库存</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">预警阈值</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">安全库存</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">状态</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">MAT-2024-012</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">激光打印机</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">电子产品</td>
+                            <td class="px-4 py-3 text-sm font-medium text-danger">3</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">5</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">10</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 badge-pulse">
+                                    库存不足
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 edit-alert" data-id="1">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 restock-btn" data-id="1">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">MAT-2024-036</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">A4打印纸</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">耗材</td>
+                            <td class="px-4 py-3 text-sm font-medium text-warning">15</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">30</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">50</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    库存偏低
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 edit-alert" data-id="2">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 restock-btn" data-id="2">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">MAT-2024-025</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">无线鼠标</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">电子产品</td>
+                            <td class="px-4 py-3 text-sm font-medium text-success">28</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">15</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">30</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    库存正常
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 edit-alert" data-id="3">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 restock-btn" data-id="3">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">MAT-2024-058</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">文件夹</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">办公用品</td>
+                            <td class="px-4 py-3 text-sm font-medium text-danger">2</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">10</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">20</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 badge-pulse">
+                                    库存不足
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 edit-alert" data-id="4">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 restock-btn" data-id="4">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">MAT-2024-041</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">办公椅</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">办公家具</td>
+                            <td class="px-4 py-3 text-sm font-medium text-warning">7</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">10</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">15</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    库存偏低
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 edit-alert" data-id="5">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 restock-btn" data-id="5">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-100">
+                <div class="text-sm text-gray-500">
+                    显示 <span class="font-medium">1</span> 到 <span class="font-medium">5</span> 条，共 <span class="font-medium">45</span> 条记录
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left text-xs"></i>
+                    </button>
+                    <button class="px-3 py-1 border border-primary bg-primary text-white rounded-md">1</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">2</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">3</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">4</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">5</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
+                        <i class="fa fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/编辑预警设置模态框 -->
+    <div id="alertModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-600">新增预警设置</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="alertForm" class="p-5">
+                <input type="hidden" id="alertId">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label for="materialCode" class="block text-sm font-medium text-gray-500 mb-1">物料编码 <span class="text-danger">*</span></label>
+                        <input type="text" id="materialCode" 
+                               class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                               placeholder="例如: MAT-2024-001">
+                        <p id="materialCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="materialName" class="block text-sm font-medium text-gray-500 mb-1">物料名称 <span class="text-danger">*</span></label>
+                        <input type="text" id="materialName" 
+                               class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                               placeholder="请输入物料名称">
+                        <p id="materialNameError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-500 mb-1">物料类别 <span class="text-danger">*</span></label>
+                        <select id="category" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                            <option value="">请选择类别</option>
+                            <option value="electronics">电子产品</option>
+                            <option value="office">办公用品</option>
+                            <option value="furniture">办公家具</option>
+                            <option value="consumables">耗材</option>
+                        </select>
+                        <p id="categoryError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="currentStock" class="block text-sm font-medium text-gray-500 mb-1">当前库存 <span class="text-danger">*</span></label>
+                        <input type="number" id="currentStock" min="0" step="1" 
+                               class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                               placeholder="当前库存数量">
+                        <p id="currentStockError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="alertThreshold" class="block text-sm font-medium text-gray-500 mb-1">预警阈值 <span class="text-danger">*</span></label>
+                        <input type="number" id="alertThreshold" min="1" step="1" 
+                               class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                               placeholder="库存低于此值将触发预警">
+                        <p id="alertThresholdError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="safetyStock" class="block text-sm font-medium text-gray-500 mb-1">安全库存 <span class="text-danger">*</span></label>
+                        <input type="number" id="safetyStock" min="1" step="1" 
+                               class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                               placeholder="建议维持的安全库存水平">
+                        <p id="safetyStockError" class="mt-1 text-sm text-danger hidden"></p>
+                        <p id="stockWarning" class="mt-1 text-sm text-warning hidden"><i class="fa fa-exclamation-circle"></i> 安全库存应高于预警阈值</p>
+                    </div>
+                    <div>
+                        <label for="alertMethod" class="block text-sm font-medium text-gray-500 mb-1">预警方式 <span class="text-danger">*</span></label>
+                        <div class="flex flex-wrap gap-3 mt-1">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="alertMethod" value="system" class="form-checkbox h-4 w-4 text-primary rounded" checked>
+                                <span class="ml-2 text-sm text-gray-600">系统通知</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="alertMethod" value="email" class="form-checkbox h-4 w-4 text-primary rounded" checked>
+                                <span class="ml-2 text-sm text-gray-600">邮件通知</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" name="alertMethod" value="sms" class="form-checkbox h-4 w-4 text-primary rounded">
+                                <span class="ml-2 text-sm text-gray-600">短信通知</span>
+                            </label>
+                        </div>
+                        <p id="alertMethodError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div>
+                        <label for="alertFrequency" class="block text-sm font-medium text-gray-500 mb-1">预警频率 <span class="text-danger">*</span></label>
+                        <select id="alertFrequency" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                            <option value="">请选择频率</option>
+                            <option value="immediate">即时通知</option>
+                            <option value="daily">每日一次</option>
+                            <option value="weekly">每周一次</option>
+                        </select>
+                        <p id="alertFrequencyError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="remark" class="block text-sm font-medium text-gray-500 mb-1">备注说明</label>
+                        <textarea id="remark" rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                  placeholder="请输入相关说明"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md btn-hover">
+                        保存设置
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 补货申请模态框 -->
+    <div id="restockModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-600">补货申请</h3>
+                <button id="closeRestockModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="restockForm" class="p-5">
+                <input type="hidden" id="restockId">
+                <div class="mb-5">
+                    <label class="block text-sm font-medium text-gray-500 mb-1">物料信息</label>
+                    <div class="bg-gray-50 p-3 rounded-md border border-gray-200">
+                        <p id="restockMaterialInfo" class="text-sm">激光打印机 (MAT-2024-012)</p>
+                        <div class="flex justify-between mt-2 text-sm">
+                            <span>当前库存: <span id="restockCurrentStock" class="text-danger font-medium">3</span></span>
+                            <span>安全库存: <span id="restockSafetyStock" class="font-medium">10</span></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-5">
+                    <label for="restockQuantity" class="block text-sm font-medium text-gray-500 mb-1">申请补货数量 <span class="text-danger">*</span></label>
+                    <input type="number" id="restockQuantity" min="1" step="1" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="请输入补货数量">
+                    <p id="restockQuantityError" class="mt-1 text-sm text-danger hidden"></p>
+                    <p id="suggestedQuantity" class="mt-1 text-sm text-primary"><i class="fa fa-lightbulb-o"></i> 建议补货: 7（达到安全库存）</p>
+                </div>
+                
+                <div class="mb-5">
+                    <label for="restockSupplier" class="block text-sm font-medium text-gray-500 mb-1">供应商 <span class="text-danger">*</span></label>
+                    <select id="restockSupplier" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                        <option value="">请选择供应商</option>
+                        <option value="1">北京科技有限公司</option>
+                        <option value="2">上海电子科技</option>
+                        <option value="3">广州办公设备</option>
+                        <option value="4">深圳耗材供应商</option>
+                    </select>
+                    <p id="restockSupplierError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div class="mb-5">
+                    <label for="expectedDate" class="block text-sm font-medium text-gray-500 mb-1">预计到货日期 <span class="text-danger">*</span></label>
+                    <input type="date" id="expectedDate" 
+                           class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                    <p id="expectedDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div class="mb-5">
+                    <label for="restockRemark" class="block text-sm font-medium text-gray-500 mb-1">申请说明</label>
+                    <textarea id="restockRemark" rows="2" 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                              placeholder="请输入补货原因或其他说明"></textarea>
+                </div>
+                
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="cancelRestockBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-success text-white rounded-md btn-hover">
+                        提交申请
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const alertModal = document.getElementById('alertModal');
+        const restockModal = document.getElementById('restockModal');
+        const alertForm = document.getElementById('alertForm');
+        const restockForm = document.getElementById('restockForm');
+        const toast = document.getElementById('toast');
+        const alertThreshold = document.getElementById('alertThreshold');
+        const safetyStock = document.getElementById('safetyStock');
+        
+        // 初始化页面
+        function init() {
+            // 打开新增预警设置模态框
+            document.getElementById('addAlertBtn').addEventListener('click', () => {
+                document.getElementById('modalTitle').textContent = '新增预警设置';
+                document.getElementById('alertId').value = '';
+                alertForm.reset();
+                // 默认选中系统通知和邮件通知
+                document.querySelector('input[name="alertMethod"][value="system"]').checked = true;
+                document.querySelector('input[name="alertMethod"][value="email"]').checked = true;
+                clearAlertErrors();
+                alertModal.classList.remove('hidden');
+            });
+            
+            // 关闭预警设置模态框
+            document.getElementById('closeModal').addEventListener('click', () => {
+                alertModal.classList.add('hidden');
+            });
+            
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                alertModal.classList.add('hidden');
+            });
+            
+            // 关闭补货申请模态框
+            document.getElementById('closeRestockModal').addEventListener('click', () => {
+                restockModal.classList.add('hidden');
+            });
+            
+            document.getElementById('cancelRestockBtn').addEventListener('click', () => {
+                restockModal.classList.add('hidden');
+            });
+            
+            // 编辑预警设置
+            document.querySelectorAll('.edit-alert').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const alertId = this.getAttribute('data-id');
+                    // 模拟获取数据
+                    const alerts = {
+                        1: {
+                            materialCode: 'MAT-2024-012',
+                            materialName: '激光打印机',
+                            category: 'electronics',
+                            currentStock: 3,
+                            alertThreshold: 5,
+                            safetyStock: 10,
+                            alertMethod: ['system', 'email', 'sms'],
+                            alertFrequency: 'immediate',
+                            remark: '销售旺季需保持充足库存'
+                        },
+                        2: {
+                            materialCode: 'MAT-2024-036',
+                            materialName: 'A4打印纸',
+                            category: 'consumables',
+                            currentStock: 15,
+                            alertThreshold: 30,
+                            safetyStock: 50,
+                            alertMethod: ['system', 'email'],
+                            alertFrequency: 'daily',
+                            remark: '每周一统一补货'
+                        },
+                        3: {
+                            materialCode: 'MAT-2024-025',
+                            materialName: '无线鼠标',
+                            category: 'electronics',
+                            currentStock: 28,
+                            alertThreshold: 15,
+                            safetyStock: 30,
+                            alertMethod: ['system'],
+                            alertFrequency: 'weekly',
+                            remark: ''
+                        },
+                        4: {
+                            materialCode: 'MAT-2024-058',
+                            materialName: '文件夹',
+                            category: 'office',
+                            currentStock: 2,
+                            alertThreshold: 10,
+                            safetyStock: 20,
+                            alertMethod: ['system', 'email', 'sms'],
+                            alertFrequency: 'immediate',
+                            remark: '每月部门领用需求大'
+                        },
+                        5: {
+                            materialCode: 'MAT-2024-041',
+                            materialName: '办公椅',
+                            category: 'furniture',
+                            currentStock: 7,
+                            alertThreshold: 10,
+                            safetyStock: 15,
+                            alertMethod: ['system', 'email'],
+                            alertFrequency: 'daily',
+                            remark: '新员工入职备用'
+                        }
+                    };
+                    
+                    const alert = alerts[alertId];
+                    if (alert) {
+                        document.getElementById('modalTitle').textContent = '编辑预警设置';
+                        document.getElementById('alertId').value = alertId;
+                        document.getElementById('materialCode').value = alert.materialCode;
+                        document.getElementById('materialName').value = alert.materialName;
+                        document.getElementById('category').value = alert.category;
+                        document.getElementById('currentStock').value = alert.currentStock;
+                        document.getElementById('alertThreshold').value = alert.alertThreshold;
+                        document.getElementById('safetyStock').value = alert.safetyStock;
+                        document.getElementById('alertFrequency').value = alert.alertFrequency;
+                        document.getElementById('remark').value = alert.remark;
+                        
+                        // 重置所有预警方式选项
+                        document.querySelectorAll('input[name="alertMethod"]').forEach(checkbox => {
+                            checkbox.checked = false;
+                        });
+                        // 选中对应预警方式
+                        alert.alertMethod.forEach(method => {
+                            const checkbox = document.querySelector(`input[name="alertMethod"][value="${method}"]`);
+                            if (checkbox) checkbox.checked = true;
+                        });
+                        
+                        clearAlertErrors();
+                        alertModal.classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // 打开补货申请
+            document.querySelectorAll('.restock-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const itemId = this.getAttribute('data-id');
+                    // 模拟获取数据
+                    const items = {
+                        1: {
+                            name: '激光打印机',
+                            code: 'MAT-2024-012',
+                            currentStock: 3,
+                            safetyStock: 10,
+                            suggested: 7
+                        },
+                        2: {
+                            name: 'A4打印纸',
+                            code: 'MAT-2024-036',
+                            currentStock: 15,
+                            safetyStock: 50,
+                            suggested: 35
+                        },
+                        3: {
+                            name: '无线鼠标',
+                            code: 'MAT-2024-025',
+                            currentStock: 28,
+                            safetyStock: 30,
+                            suggested: 2
+                        },
+                        4: {
+                            name: '文件夹',
+                            code: 'MAT-2024-058',
+                            currentStock: 2,
+                            safetyStock: 20,
+                            suggested: 18
+                        },
+                        5: {
+                            name: '办公椅',
+                            code: 'MAT-2024-041',
+                            currentStock: 7,
+                            safetyStock: 15,
+                            suggested: 8
+                        }
+                    };
+                    
+                    const item = items[itemId];
+                    if (item) {
+                        document.getElementById('restockId').value = itemId;
+                        document.getElementById('restockMaterialInfo').textContent = `${item.name} (${item.code})`;
+                        document.getElementById('restockCurrentStock').textContent = item.currentStock;
+                        document.getElementById('restockSafetyStock').textContent = item.safetyStock;
+                        document.getElementById('suggestedQuantity').innerHTML = `<i class="fa fa-lightbulb-o"></i> 建议补货: ${item.suggested}（达到安全库存）`;
+                        document.getElementById('restockQuantity').value = item.suggested;
+                        
+                        clearRestockErrors();
+                        restockModal.classList.remove('hidden');
+                    }
+                });
+            });
+            
+            // 搜索和筛选功能
+            document.getElementById('searchInput').addEventListener('input', filterAlerts);
+            document.getElementById('categoryFilter').addEventListener('change', filterAlerts);
+            document.getElementById('statusFilter').addEventListener('change', filterAlerts);
+            
+            // 库存阈值验证
+            alertThreshold.addEventListener('input', validateStockLevels);
+            safetyStock.addEventListener('input', validateStockLevels);
+            
+            // 预警设置表单提交
+            alertForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateAlertForm()) {
+                    submitAlertForm();
+                }
+            });
+            
+            // 补货申请表单提交
+            restockForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateRestockForm()) {
+                    submitRestockForm();
+                }
+            });
+        }
+        
+        // 筛选预警列表
+        function filterAlerts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const categoryCell = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                const statusCell = row.querySelector('td:nth-child(7) span').className;
+                
+                // 应用搜索词筛选
+                const matchesSearch = text.includes(searchTerm);
+                
+                // 应用类别筛选
+                const matchesCategory = !categoryFilter || 
+                    (categoryFilter === 'electronics' && categoryCell.includes('电子产品')) ||
+                    (categoryFilter === 'office' && categoryCell.includes('办公用品')) ||
+                    (categoryFilter === 'furniture' && categoryCell.includes('办公家具')) ||
+                    (categoryFilter === 'consumables' && categoryCell.includes('耗材'));
+                
+                // 应用状态筛选
+                const matchesStatus = !statusFilter ||
+                    (statusFilter === 'alert' && statusCell.includes('bg-red-100')) ||
+                    (statusFilter === 'warning' && statusCell.includes('bg-yellow-100')) ||
+                    (statusFilter === 'normal' && statusCell.includes('bg-green-100'));
+                
+                // 显示或隐藏行
+                row.style.display = (matchesSearch && matchesCategory && matchesStatus) ? '' : 'none';
+            });
+        }
+        
+        // 验证库存水平关系
+        function validateStockLevels() {
+            const stockWarning = document.getElementById('stockWarning');
+            stockWarning.classList.add('hidden');
+            
+            if (alertThreshold.value && safetyStock.value) {
+                const threshold = parseInt(alertThreshold.value);
+                const safety = parseInt(safetyStock.value);
+                
+                if (safety <= threshold) {
+                    stockWarning.classList.remove('hidden');
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // 清除预警设置表单错误提示
+        function clearAlertErrors() {
+            document.querySelectorAll('#alertForm [id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            document.getElementById('stockWarning').classList.add('hidden');
+            document.querySelectorAll('#alertForm .form-input-focus').forEach(el => {
+                el.classList.remove('border-danger');
+            });
+        }
+        
+        // 清除补货申请表单错误提示
+        function clearRestockErrors() {
+            document.querySelectorAll('#restockForm [id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            document.querySelectorAll('#restockForm .form-input-focus').forEach(el => {
+                el.classList.remove('border-danger');
+            });
+        }
+        
+        // 显示错误信息
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('border-danger');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 验证预警设置表单
+        function validateAlertForm() {
+            let isValid = true;
+            clearAlertErrors();
+            
+            // 物料编码验证
+            const materialCode = document.getElementById('materialCode');
+            if (!materialCode.value.trim()) {
+                showError(materialCode, 'materialCodeError', '物料编码不能为空');
+                isValid = false;
+            } else if (!/^MAT-\d{4}-\d{3}$/.test(materialCode.value.trim()) && !document.getElementById('alertId').value) {
+                showError(materialCode, 'materialCodeError', '物料编码格式应为MAT-年份-三位数字');
+                isValid = false;
+            }
+            
+            // 物料名称验证
+            const materialName = document.getElementById('materialName');
+            if (!materialName.value.trim()) {
+                showError(materialName, 'materialNameError', '物料名称不能为空');
+                isValid = false;
+            }
+            
+            // 类别验证
+            const category = document.getElementById('category');
+            if (!category.value) {
+                showError(category, 'categoryError', '请选择物料类别');
+                isValid = false;
+            }
+            
+            // 当前库存验证
+            const currentStock = document.getElementById('currentStock');
+            if (!currentStock.value || currentStock.value < 0) {
+                showError(currentStock, 'currentStockError', '请输入有效的当前库存数量（不能为负）');
+                isValid = false;
+            }
+            
+            // 预警阈值验证
+            if (!alertThreshold.value || alertThreshold.value < 1) {
+                showError(alertThreshold, 'alertThresholdError', '请输入有效的预警阈值（至少1）');
+                isValid = false;
+            }
+            
+            // 安全库存验证
+            if (!safetyStock.value || safetyStock.value < 1) {
+                showError(safetyStock, 'safetyStockError', '请输入有效的安全库存（至少1）');
+                isValid = false;
+            } else {
+                validateStockLevels();
+            }
+            
+            // 预警方式验证
+            const alertMethods = document.querySelectorAll('input[name="alertMethod"]:checked');
+            if (alertMethods.length === 0) {
+                document.getElementById('alertMethodError').textContent = '请至少选择一种预警方式';
+                document.getElementById('alertMethodError').classList.remove('hidden');
+                isValid = false;
+            }
+            
+            // 预警频率验证
+            const alertFrequency = document.getElementById('alertFrequency');
+            if (!alertFrequency.value) {
+                showError(alertFrequency, 'alertFrequencyError', '请选择预警频率');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证补货申请表单
+        function validateRestockForm() {
+            let isValid = true;
+            clearRestockErrors();
+            
+            // 补货数量验证
+            const restockQuantity = document.getElementById('restockQuantity');
+            if (!restockQuantity.value || restockQuantity.value < 1) {
+                showError(restockQuantity, 'restockQuantityError', '请输入有效的补货数量（至少1）');
+                isValid = false;
+            }
+            
+            // 供应商验证
+            const restockSupplier = document.getElementById('restockSupplier');
+            if (!restockSupplier.value) {
+                showError(restockSupplier, 'restockSupplierError', '请选择供应商');
+                isValid = false;
+            }
+            
+            // 预计到货日期验证
+            const expectedDate = document.getElementById('expectedDate');
+            if (!expectedDate.value) {
+                showError(expectedDate, 'expectedDateError', '请选择预计到货日期');
+                isValid = false;
+            } else {
+                const selectedDate = new Date(expectedDate.value);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                if (selectedDate < today) {
+                    showError(expectedDate, 'expectedDateError', '预计到货日期不能早于今天');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // 提交预警设置表单
+        function submitAlertForm() {
+            const alertId = document.getElementById('alertId').value;
+            const isEdit = !!alertId;
+            const materialName = document.getElementById('materialName').value;
+            
+            // 模拟提交
+            setTimeout(() => {
+                alertModal.classList.add('hidden');
+                showToast(isEdit ? `预警设置 "${materialName}" 更新成功` : `预警设置 "${materialName}" 创建成功`);
+            }, 800);
+        }
+        
+        // 提交补货申请表单
+        function submitRestockForm() {
+            const materialInfo = document.getElementById('restockMaterialInfo').textContent;
+            const quantity = document.getElementById('restockQuantity').value;
+            
+            // 模拟提交
+            setTimeout(() => {
+                restockModal.classList.add('hidden');
+                showToast(`补货申请已提交：${materialInfo}，数量：${quantity}`);
+            }, 800);
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(e) {
+            if (e.target === alertModal) {
+                alertModal.classList.add('hidden');
+            }
+            if (e.target === restockModal) {
+                restockModal.classList.add('hidden');
+            }
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

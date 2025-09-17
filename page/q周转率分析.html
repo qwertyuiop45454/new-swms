@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存周转率分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        success: '#166534',
+                        danger: '#dc2626',
+                        warning: '#c2410c',
+                        info: '#0ea5e9',
+                        neutral: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white overflow-hidden;
+            }
+            .stat-card {
+                @apply card-shadow p-5 transition-all duration-300 hover:shadow-md;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+            .required-mark {
+                @apply text-danger inline-block ml-1;
+            }
+            .turnover-high {
+                @apply bg-success/10 text-success;
+            }
+            .turnover-medium {
+                @apply bg-warning/10 text-warning;
+            }
+            .turnover-low {
+                @apply bg-danger/10 text-danger;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">库存周转率分析</h1>
+            <p class="text-neutral-500 mt-1">商品库存周转效率与趋势分析</p>
+        </div>
+
+        <!-- 筛选条件 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-filter text-primary mr-2"></i>分析条件
+            </h2>
+            
+            <form id="analysisForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="startDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                        开始日期 <span class="required-mark">*</span>
+                    </label>
+                    <input type="date" id="startDate" 
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="startDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="endDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                        结束日期 <span class="required-mark">*</span>
+                    </label>
+                    <input type="date" id="endDate" 
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="endDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="categoryFilter" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品类别
+                    </label>
+                    <select id="categoryFilter" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">全部类别</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="clothing">服装鞋帽</option>
+                        <option value="food">食品饮料</option>
+                        <option value="home">家居用品</option>
+                        <option value="others">其他类别</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-line-chart mr-1"></i> 分析数据
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 周转率统计概览 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">平均库存周转率</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="avgTurnoverRate">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <i class="fa fa-refresh"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 5.2%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">平均库存天数</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="avgStockDays">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-info/10 flex items-center justify-center text-info">
+                        <i class="fa fa-calendar"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 2.1%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总销售成本(元)</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalCost">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 12.3%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">平均库存价值(元)</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="avgStockValue">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                        <i class="fa fa-cubes"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 3.8%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上期</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表分析区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-line-chart text-primary mr-2"></i>周转率趋势
+                </h2>
+                <div class="h-80">
+                    <canvas id="turnoverTrendChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-bar-chart text-primary mr-2"></i>商品周转率对比
+                </h2>
+                <div class="h-80">
+                    <canvas id="productComparisonChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 周转率详情表格 -->
+        <div class="card-shadow mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b border-neutral-200">
+                <h2 class="text-lg font-semibold text-neutral-800">
+                    <i class="fa fa-table text-primary mr-2"></i>周转率详情
+                </h2>
+                <div class="mt-3 sm:mt-0 flex gap-2">
+                    <div class="relative">
+                        <input type="text" id="searchProducts" 
+                               class="pl-9 pr-3 py-2 border border-neutral-300 rounded-md form-input-focus w-full sm:w-64"
+                               placeholder="搜索商品...">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"></i>
+                    </div>
+                    <button id="exportDetails" class="px-4 py-2 border border-primary bg-primary/10 text-primary rounded-md btn-hover">
+                        <i class="fa fa-download mr-1"></i> 导出详情
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-neutral-50">
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品编码</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品名称</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">类别</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">期初库存</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">期末库存</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">平均库存</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">销售成本(元)</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">周转率</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">库存天数</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">周转效率</th>
+                        </tr>
+                    </thead>
+                    <tbody id="turnoverTableBody">
+                        <!-- 周转率详情将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="p-5 border-t border-neutral-200 flex justify-between items-center flex-wrap gap-4">
+                <div class="text-neutral-500 text-sm">
+                    显示 <span id="showingRange">0-0</span> 条，共 <span id="totalItems">0</span> 条记录
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 库存调整建议 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-lightbulb-o text-warning mr-2"></i>库存调整建议
+            </h2>
+            
+            <div id="inventorySuggestions" class="space-y-4">
+                <!-- 建议内容将通过JavaScript动态生成 -->
+            </div>
+        </div>
+
+        <!-- 库存数据录入 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-edit text-primary mr-2"></i>库存数据录入
+            </h2>
+            
+            <form id="inventoryDataForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="productCode" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品编码 <span class="required-mark">*</span>
+                    </label>
+                    <input type="text" id="productCode" placeholder="请输入商品编码"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="productCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="productName" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品名称 <span class="required-mark">*</span>
+                    </label>
+                    <input type="text" id="productName" placeholder="请输入商品名称"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="productNameError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="productCategory" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品类别 <span class="required-mark">*</span>
+                    </label>
+                    <select id="productCategory" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">请选择类别</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="clothing">服装鞋帽</option>
+                        <option value="food">食品饮料</option>
+                        <option value="home">家居用品</option>
+                        <option value="others">其他类别</option>
+                    </select>
+                    <p id="productCategoryError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="beginningStock" class="block text-sm font-medium text-neutral-700 mb-1">
+                        期初库存数量 <span class="required-mark">*</span>
+                    </label>
+                    <input type="number" min="0" id="beginningStock" placeholder="请输入期初库存"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="beginningStockError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="endingStock" class="block text-sm font-medium text-neutral-700 mb-1">
+                        期末库存数量 <span class="required-mark">*</span>
+                    </label>
+                    <input type="number" min="0" id="endingStock" placeholder="请输入期末库存"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="endingStockError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="costOfGoods" class="block text-sm font-medium text-neutral-700 mb-1">
+                        销售成本(元) <span class="required-mark">*</span>
+                    </label>
+                    <input type="number" min="0.01" step="0.01" id="costOfGoods" placeholder="请输入销售成本"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="costOfGoodsError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div class="md:col-span-3">
+                    <label for="dataRemark" class="block text-sm font-medium text-neutral-700 mb-1">
+                        备注
+                    </label>
+                    <textarea id="dataRemark" rows="2" placeholder="请输入备注信息"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"></textarea>
+                </div>
+                
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-save mr-1"></i> 提交数据
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const analysisForm = document.getElementById('analysisForm');
+        const inventoryDataForm = document.getElementById('inventoryDataForm');
+        const turnoverTableBody = document.getElementById('turnoverTableBody');
+        const searchProducts = document.getElementById('searchProducts');
+        const exportDetails = document.getElementById('exportDetails');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const pagination = document.getElementById('pagination');
+        const showingRange = document.getElementById('showingRange');
+        const totalItems = document.getElementById('totalItems');
+        const toast = document.getElementById('toast');
+        const inventorySuggestions = document.getElementById('inventorySuggestions');
+        
+        // 统计数据元素
+        const avgTurnoverRateEl = document.getElementById('avgTurnoverRate');
+        const avgStockDaysEl = document.getElementById('avgStockDays');
+        const totalCostEl = document.getElementById('totalCost');
+        const avgStockValueEl = document.getElementById('avgStockValue');
+        
+        // 图表实例
+        let turnoverTrendChart = null;
+        let productComparisonChart = null;
+        
+        // 分页参数
+        const pageSize = 10;
+        let currentPage = 1;
+        let totalPages = 1;
+        let filteredProducts = [];
+        
+        // 模拟库存周转数据
+        const inventoryData = [
+            { productId: 'PROD001', productName: '智能手机A1', category: 'electronics', 
+              beginningStock: 50, endingStock: 35, costOfGoods: 44985, unitPrice: 2799 },
+            { productId: 'PROD002', productName: '笔记本电脑Pro', category: 'electronics', 
+              beginningStock: 20, endingStock: 15, costOfGoods: 55990, unitPrice: 5599 },
+            { productId: 'PROD003', productName: '无线耳机', category: 'electronics', 
+              beginningStock: 100, endingStock: 80, costOfGoods: 15180, unitPrice: 759 },
+            { productId: 'PROD004', productName: '男士T恤', category: 'clothing', 
+              beginningStock: 200, endingStock: 155, costOfGoods: 4005, unitPrice: 89 },
+            { productId: 'PROD005', productName: '牛仔裤', category: 'clothing', 
+              beginningStock: 150, endingStock: 130, costOfGoods: 3580, unitPrice: 179 },
+            { productId: 'PROD006', productName: '运动鞋', category: 'clothing', 
+              beginningStock: 80, endingStock: 60, costOfGoods: 7980, unitPrice: 399 },
+            { productId: 'PROD007', productName: '休闲饼干', category: 'food', 
+              beginningStock: 500, endingStock: 300, costOfGoods: 2800, unitPrice: 14 },
+            { productId: 'PROD008', productName: '矿泉水', category: 'food', 
+              beginningStock: 1000, endingStock: 900, costOfGoods: 200, unitPrice: 2 },
+            { productId: 'PROD009', productName: '巧克力', category: 'food', 
+              beginningStock: 300, endingStock: 250, costOfGoods: 550, unitPrice: 11 },
+            { productId: 'PROD010', productName: '毛巾', category: 'home', 
+              beginningStock: 100, endingStock: 85, costOfGoods: 270, unitPrice: 18 },
+            { productId: 'PROD011', productName: '洗发水', category: 'home', 
+              beginningStock: 100, endingStock: 90, costOfGoods: 400, unitPrice: 40 },
+            { productId: 'PROD012', productName: '洗衣液', category: 'home', 
+              beginningStock: 50, endingStock: 42, costOfGoods: 544, unitPrice: 68 },
+            { productId: 'PROD013', productName: '钢笔', category: 'others', 
+              beginningStock: 50, endingStock: 45, costOfGoods: 160, unitPrice: 32 }
+        ];
+
+        // 初始化页面
+        function init() {
+            // 设置默认日期范围为最近90天
+            const today = new Date();
+            const lastThreeMonths = new Date();
+            lastThreeMonths.setDate(today.getDate() - 90);
+            
+            document.getElementById('startDate').value = lastThreeMonths.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            
+            // 初始化图表
+            initCharts();
+            
+            // 加载数据
+            filteredProducts = [...inventoryData];
+            updateTurnoverTable();
+            updateStatistics();
+            generateSuggestions();
+            
+            // 事件监听
+            analysisForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateAnalysisForm()) {
+                    applyFilters();
+                    currentPage = 1;
+                    updateTurnoverTable();
+                    updateStatistics();
+                    updateCharts();
+                    generateSuggestions();
+                }
+            });
+            
+            inventoryDataForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateInventoryDataForm()) {
+                    addNewInventoryData();
+                    showToast('库存数据添加成功', 'success');
+                    inventoryDataForm.reset();
+                    // 刷新数据
+                    applyFilters();
+                    updateTurnoverTable();
+                    updateStatistics();
+                    updateCharts();
+                    generateSuggestions();
+                }
+            });
+            
+            searchProducts.addEventListener('input', function() {
+                currentPage = 1;
+                updateTurnoverTable();
+            });
+            
+            exportDetails.addEventListener('click', function() {
+                showToast('周转率详情导出成功', 'success');
+                // 实际应用中这里会处理导出逻辑
+            });
+            
+            prevPage.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateTurnoverTable();
+                }
+            });
+            
+            nextPage.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateTurnoverTable();
+                }
+            });
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 周转率趋势图表
+            const trendCtx = document.getElementById('turnoverTrendChart').getContext('2d');
+            turnoverTrendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: getTurnoverTrendData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '周转率'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+            
+            // 商品周转率对比图表
+            const comparisonCtx = document.getElementById('productComparisonChart').getContext('2d');
+            productComparisonChart = new Chart(comparisonCtx, {
+                type: 'bar',
+                data: getProductComparisonData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '周转率'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw || 0;
+                                    return `周转率: ${value.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新图表数据
+        function updateCharts() {
+            turnoverTrendChart.data = getTurnoverTrendData();
+            turnoverTrendChart.update();
+            
+            productComparisonChart.data = getProductComparisonData();
+            productComparisonChart.update();
+        }
+        
+        // 获取周转率趋势图表数据
+        function getTurnoverTrendData() {
+            // 模拟近6个月的周转率数据
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月'];
+            const electronicsData = [2.1, 2.3, 2.5, 2.4, 2.7, 2.8];
+            const clothingData = [3.5, 3.7, 3.6, 3.9, 4.1, 4.2];
+            const foodData = [5.2, 5.5, 5.8, 6.1, 6.3, 6.5];
+            const homeData = [1.8, 1.9, 2.0, 2.1, 2.2, 2.3];
+            const othersData = [1.2, 1.3, 1.4, 1.3, 1.5, 1.6];
+            
+            // 根据筛选条件过滤数据
+            const category = document.getElementById('categoryFilter').value;
+            const datasets = [];
+            
+            if (!category || category === 'electronics') {
+                datasets.push({
+                    label: '电子产品',
+                    data: electronicsData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                });
+            }
+            
+            if (!category || category === 'clothing') {
+                datasets.push({
+                    label: '服装鞋帽',
+                    data: clothingData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                });
+            }
+            
+            if (!category || category === 'food') {
+                datasets.push({
+                    label: '食品饮料',
+                    data: foodData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                });
+            }
+            
+            if (!category || category === 'home') {
+                datasets.push({
+                    label: '家居用品',
+                    data: homeData,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                });
+            }
+            
+            if (!category || category === 'others') {
+                datasets.push({
+                    label: '其他类别',
+                    data: othersData,
+                    borderColor: '#ec4899',
+                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                });
+            }
+            
+            return {
+                labels: months,
+                datasets: datasets
+            };
+        }
+        
+        // 获取商品周转率对比图表数据
+        function getProductComparisonData() {
+            // 只取前8个商品进行对比，避免图表过于拥挤
+            const topProducts = [...filteredProducts]
+                .sort((a, b) => calculateTurnover(b) - calculateTurnover(a))
+                .slice(0, 8);
+            
+            return {
+                labels: topProducts.map(p => p.productName),
+                datasets: [{
+                    label: '周转率',
+                    data: topProducts.map(p => calculateTurnover(p)),
+                    backgroundColor: topProducts.map(p => {
+                        const turnover = calculateTurnover(p);
+                        if (turnover > 4) return 'rgba(22, 101, 52, 0.7)';
+                        if (turnover > 2) return 'rgba(194, 65, 12, 0.7)';
+                        return 'rgba(220, 38, 38, 0.7)';
+                    }),
+                    borderWidth: 1
+                }]
+            };
+        }
+        
+        // 应用筛选条件
+        function applyFilters() {
+            const category = document.getElementById('categoryFilter').value;
+            
+            filteredProducts = inventoryData.filter(product => {
+                // 类别筛选
+                if (category && product.category !== category) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // 更新周转率表格
+        function updateTurnoverTable() {
+            // 搜索筛选
+            const searchTerm = searchProducts.value.toLowerCase().trim();
+            let dataToShow = filteredProducts.filter(product => 
+                product.productId.toLowerCase().includes(searchTerm) || 
+                product.productName.toLowerCase().includes(searchTerm)
+            );
+            
+            // 计算分页
+            totalPages = Math.ceil(dataToShow.length / pageSize);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+            
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, dataToShow.length);
+            const paginatedData = dataToShow.slice(startIndex, endIndex);
+            
+            // 更新表格内容
+            turnoverTableBody.innerHTML = '';
+            
+            paginatedData.forEach(product => {
+                const turnoverRate = calculateTurnover(product);
+                const stockDays = Math.round(365 / turnoverRate);
+                let efficiencyClass = 'turnover-low';
+                let efficiencyText = '低';
+                
+                if (turnoverRate > 4) {
+                    efficiencyClass = 'turnover-high';
+                    efficiencyText = '高';
+                } else if (turnoverRate > 2) {
+                    efficiencyClass = 'turnover-medium';
+                    efficiencyText = '中';
+                }
+                
+                const avgStock = ((product.beginningStock + product.endingStock) / 2).toFixed(1);
+                const avgStockValue = (avgStock * product.unitPrice).toFixed(2);
+                
+                const row = document.createElement('tr');
+                row.className = 'border-t border-neutral-200 hover:bg-neutral-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-5 py-3">${product.productId}</td>
+                    <td class="px-5 py-3">${product.productName}</td>
+                    <td class="px-5 py-3">${getCategoryName(product.category)}</td>
+                    <td class="px-5 py-3">${product.beginningStock}</td>
+                    <td class="px-5 py-3">${product.endingStock}</td>
+                    <td class="px-5 py-3">${avgStock}</td>
+                    <td class="px-5 py-3">${product.costOfGoods.toFixed(2)}</td>
+                    <td class="px-5 py-3">${turnoverRate.toFixed(2)}</td>
+                    <td class="px-5 py-3">${stockDays}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${efficiencyClass}">${efficiencyText}</span>
+                    </td>
+                `;
+                turnoverTableBody.appendChild(row);
+            });
+            
+            // 更新分页控件
+            updatePagination();
+            
+            // 更新显示信息
+            showingRange.textContent = dataToShow.length > 0 ? 
+                `${startIndex + 1}-${endIndex}` : '0-0';
+            totalItems.textContent = dataToShow.length;
+            
+            // 更新分页按钮状态
+            prevPage.disabled = currentPage <= 1;
+            nextPage.disabled = currentPage >= totalPages || totalPages === 0;
+        }
+        
+        // 更新分页控件
+        function updatePagination() {
+            pagination.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `px-3 py-1 rounded-md text-sm btn-hover ${i === currentPage ? 'bg-primary text-white' : 'border border-neutral-300 text-neutral-700'}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', function() {
+                    currentPage = i;
+                    updateTurnoverTable();
+                });
+                pagination.appendChild(pageBtn);
+            }
+        }
+        
+        // 更新统计数据
+        function updateStatistics() {
+            if (filteredProducts.length === 0) {
+                avgTurnoverRateEl.textContent = '0.00';
+                avgStockDaysEl.textContent = '0';
+                totalCostEl.textContent = '0.00';
+                avgStockValueEl.textContent = '0.00';
+                return;
+            }
+            
+            // 计算平均周转率
+            let totalTurnover = 0;
+            let totalStockDays = 0;
+            let totalCost = 0;
+            let totalAvgStockValue = 0;
+            
+            filteredProducts.forEach(product => {
+                const turnover = calculateTurnover(product);
+                totalTurnover += turnover;
+                totalStockDays += Math.round(365 / turnover);
+                totalCost += product.costOfGoods;
+                
+                const avgStock = (product.beginningStock + product.endingStock) / 2;
+                totalAvgStockValue += avgStock * product.unitPrice;
+            });
+            
+            // 更新UI
+            avgTurnoverRateEl.textContent = (totalTurnover / filteredProducts.length).toFixed(2);
+            avgStockDaysEl.textContent = Math.round(totalStockDays / filteredProducts.length);
+            totalCostEl.textContent = totalCost.toFixed(2);
+            avgStockValueEl.textContent = (totalAvgStockValue / filteredProducts.length).toFixed(2);
+        }
+        
+        // 生成库存调整建议
+        function generateSuggestions() {
+            inventorySuggestions.innerHTML = '';
+            
+            if (filteredProducts.length === 0) {
+                inventorySuggestions.innerHTML = `
+                    <div class="p-4 bg-neutral-50 rounded-md">
+                        <p class="text-neutral-500">没有找到相关商品数据，无法生成建议。</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 找出周转率最低的3个商品（库存积压）
+            const lowTurnoverProducts = [...filteredProducts]
+                .sort((a, b) => calculateTurnover(a) - calculateTurnover(b))
+                .slice(0, 3);
+            
+            // 找出周转率最高的3个商品（可能缺货）
+            const highTurnoverProducts = [...filteredProducts]
+                .sort((a, b) => calculateTurnover(b) - calculateTurnover(a))
+                .slice(0, 3);
+            
+            // 生成积压商品建议
+            if (lowTurnoverProducts.length > 0) {
+                const积压Suggestion = document.createElement('div');
+                积压Suggestion.className = 'p-4 bg-danger/5 rounded-md border border-danger/20';
+                积压Suggestion.innerHTML = `
+                    <h3 class="font-medium text-danger flex items-center">
+                        <i class="fa fa-exclamation-triangle mr-2"></i>库存积压商品建议
+                    </h3>
+                    <p class="mt-2 text-neutral-700">以下商品周转率较低，建议减少采购量或考虑促销活动：</p>
+                    <ul class="mt-2 ml-5 list-disc text-neutral-600">
+                        ${lowTurnoverProducts.map(p => 
+                            `<li>${p.productName} (周转率: ${calculateTurnover(p).toFixed(2)})</li>`
+                        ).join('')}
+                    </ul>
+                `;
+                inventorySuggestions.appendChild(积压Suggestion);
+            }
+            
+            // 生成畅销商品建议
+            if (highTurnoverProducts.length > 0) {
+                const畅销Suggestion = document.createElement('div');
+                畅销Suggestion.className = 'p-4 bg-success/5 rounded-md border border-success/20';
+                畅销Suggestion.innerHTML = `
+                    <h3 class="font-medium text-success flex items-center">
+                        <i class="fa fa-lightbulb-o mr-2"></i>畅销商品建议
+                    </h3>
+                    <p class="mt-2 text-neutral-700">以下商品周转率较高，建议确保库存充足，避免缺货：</p>
+                    <ul class="mt-2 ml-5 list-disc text-neutral-600">
+                        ${highTurnoverProducts.map(p => 
+                            `<li>${p.productName} (周转率: ${calculateTurnover(p).toFixed(2)})</li>`
+                        ).join('')}
+                    </ul>
+                `;
+                inventorySuggestions.appendChild(畅销Suggestion);
+            }
+            
+            // 类别分析建议
+            const categoryAnalysis = document.createElement('div');
+            categoryAnalysis.className = 'p-4 bg-primary/5 rounded-md border border-primary/20';
+            categoryAnalysis.innerHTML = `
+                <h3 class="font-medium text-primary flex items-center">
+                    <i class="fa fa-bar-chart mr-2"></i>类别分析建议
+                </h3>
+                <p class="mt-2 text-neutral-700">整体平均周转率为 ${avgTurnoverRateEl.textContent}，库存周转效率处于${
+                    parseFloat(avgTurnoverRateEl.textContent) > 4 ? '较高' : 
+                    parseFloat(avgTurnoverRateEl.textContent) > 2 ? '中等' : '较低'
+                }水平。</p>
+                <p class="mt-1 text-neutral-700">建议优化库存结构，提高整体周转效率，减少资金占用。</p>
+            `;
+            inventorySuggestions.appendChild(categoryAnalysis);
+        }
+        
+        // 添加新库存数据
+        function addNewInventoryData() {
+            const productCode = document.getElementById('productCode').value;
+            const productName = document.getElementById('productName').value;
+            const category = document.getElementById('productCategory').value;
+            const beginningStock = parseInt(document.getElementById('beginningStock').value);
+            const endingStock = parseInt(document.getElementById('endingStock').value);
+            const costOfGoods = parseFloat(document.getElementById('costOfGoods').value);
+            const unitPrice = costOfGoods / ((beginningStock + endingStock) / 2) || 0; // 估算单价
+            const remark = document.getElementById('dataRemark').value;
+            
+            // 添加到数据列表
+            inventoryData.push({
+                productId: productCode,
+                productName: productName,
+                category: category,
+                beginningStock: beginningStock,
+                endingStock: endingStock,
+                costOfGoods: costOfGoods,
+                unitPrice: unitPrice
+            });
+        }
+        
+        // 计算周转率 (销售成本 / 平均库存价值)
+        function calculateTurnover(product) {
+            const avgStockValue = ((product.beginningStock + product.endingStock) / 2) * product.unitPrice;
+            return avgStockValue > 0 ? product.costOfGoods / avgStockValue : 0;
+        }
+        
+        // 验证分析表单
+        function validateAnalysisForm() {
+            let isValid = true;
+            clearAnalysisErrors();
+            
+            const startDate = document.getElementById('startDate');
+            if (!startDate.value) {
+                showAnalysisError(startDate, 'startDateError', '请选择开始日期');
+                isValid = false;
+            }
+            
+            const endDate = document.getElementById('endDate');
+            if (!endDate.value) {
+                showAnalysisError(endDate, 'endDateError', '请选择结束日期');
+                isValid = false;
+            }
+            
+            // 验证日期逻辑
+            if (isValid && new Date(startDate.value) > new Date(endDate.value)) {
+                showAnalysisError(endDate, 'endDateError', '结束日期不能早于开始日期');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证库存数据表单
+        function validateInventoryDataForm() {
+            let isValid = true;
+            clearInventoryDataErrors();
+            
+            const productCode = document.getElementById('productCode');
+            if (!productCode.value.trim()) {
+                showInventoryDataError(productCode, 'productCodeError', '请输入商品编码');
+                isValid = false;
+            }
+            
+            const productName = document.getElementById('productName');
+            if (!productName.value.trim()) {
+                showInventoryDataError(productName, 'productNameError', '请输入商品名称');
+                isValid = false;
+            }
+            
+            const productCategory = document.getElementById('productCategory');
+            if (!productCategory.value) {
+                showInventoryDataError(productCategory, 'productCategoryError', '请选择商品类别');
+                isValid = false;
+            }
+            
+            const beginningStock = document.getElementById('beginningStock');
+            if (!beginningStock.value || beginningStock.value < 0) {
+                showInventoryDataError(beginningStock, 'beginningStockError', '请输入有效的期初库存');
+                isValid = false;
+            }
+            
+            const endingStock = document.getElementById('endingStock');
+            if (!endingStock.value || endingStock.value < 0) {
+                showInventoryDataError(endingStock, 'endingStockError', '请输入有效的期末库存');
+                isValid = false;
+            }
+            
+            const costOfGoods = document.getElementById('costOfGoods');
+            if (!costOfGoods.value || costOfGoods.value <= 0) {
+                showInventoryDataError(costOfGoods, 'costOfGoodsError', '请输入有效的销售成本');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 清除分析表单错误
+        function clearAnalysisErrors() {
+            const elements = [
+                { id: 'startDate', errorId: 'startDateError' },
+                { id: 'endDate', errorId: 'endDateError' }
+            ];
+            
+            elements.forEach(({ id, errorId }) => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(errorId);
+                
+                el.classList.remove('input-error');
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            });
+        }
+        
+        // 清除库存数据表单错误
+        function clearInventoryDataErrors() {
+            const elements = [
+                { id: 'productCode', errorId: 'productCodeError' },
+                { id: 'productName', errorId: 'productNameError' },
+                { id: 'productCategory', errorId: 'productCategoryError' },
+                { id: 'beginningStock', errorId: 'beginningStockError' },
+                { id: 'endingStock', errorId: 'endingStockError' },
+                { id: 'costOfGoods', errorId: 'costOfGoodsError' }
+            ];
+            
+            elements.forEach(({ id, errorId }) => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(errorId);
+                
+                el.classList.remove('input-error');
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            });
+        }
+        
+        // 显示分析表单错误
+        function showAnalysisError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示库存数据表单错误
+        function showInventoryDataError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 辅助函数：获取类别名称
+        function getCategoryName(category) {
+            const names = {
+                'electronics': '电子产品',
+                'clothing': '服装鞋帽',
+                'food': '食品饮料',
+                'home': '家居用品',
+                'others': '其他类别'
+            };
+            return names[category] || category;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

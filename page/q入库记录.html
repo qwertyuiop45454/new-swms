@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入库记录表</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                        neutral: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">入库记录表</h1>
+            <p class="text-neutral-500 mt-1">记录物料入库的详细信息与凭证</p>
+        </div>
+
+        <!-- 入库记录表单 -->
+        <form id="stockInRecordForm" class="space-y-6">
+            <!-- 入库基本信息 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-file-text-o text-primary mr-2"></i>入库基本信息
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="recordNo" class="block text-sm font-medium text-neutral-700 mb-1">记录编号 <span class="text-danger">*</span></label>
+                        <input type="text" id="recordNo" readonly
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md bg-neutral-50"
+                               placeholder="系统自动生成">
+                        <p id="recordNoError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="stockInNo" class="block text-sm font-medium text-neutral-700 mb-1">入库单号 <span class="text-danger">*</span></label>
+                        <input type="text" id="stockInNo" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="关联的入库单号">
+                        <p id="stockInNoError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="stockInDate" class="block text-sm font-medium text-neutral-700 mb-1">入库日期 <span class="text-danger">*</span></label>
+                        <input type="date" id="stockInDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <p id="stockInDateError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="operationType" class="block text-sm font-medium text-neutral-700 mb-1">操作类型 <span class="text-danger">*</span></label>
+                        <select id="operationType" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择操作类型</option>
+                            <option value="purchase">采购入库</option>
+                            <option value="production">生产入库</option>
+                            <option value="return">退货入库</option>
+                            <option value="transfer">调拨入库</option>
+                            <option value="adjustment">调整入库</option>
+                            <option value="other">其他入库</option>
+                        </select>
+                        <p id="operationTypeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="warehouse" class="block text-sm font-medium text-neutral-700 mb-1">入库仓库 <span class="text-danger">*</span></label>
+                        <select id="warehouse" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择仓库</option>
+                            <option value="main">主仓库</option>
+                            <option value="auxiliary">辅助仓库</option>
+                            <option value="cold">冷链仓库</option>
+                            <option value="dangerous">危险品仓库</option>
+                            <option value="temporary">临时仓库</option>
+                        </select>
+                        <p id="warehouseError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="operator" class="block text-sm font-medium text-neutral-700 mb-1">操作员 <span class="text-danger">*</span></label>
+                        <input type="text" id="operator" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="操作人姓名">
+                        <p id="operatorError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 供应商/来源信息 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-building text-primary mr-2"></i>来源信息
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="sourceName" class="block text-sm font-medium text-neutral-700 mb-1">来源名称 <span class="text-danger">*</span></label>
+                        <input type="text" id="sourceName" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="供应商/生产部门名称">
+                        <p id="sourceNameError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="sourceCode" class="block text-sm font-medium text-neutral-700 mb-1">来源编码</label>
+                        <input type="text" id="sourceCode" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="供应商/部门编码">
+                    </div>
+                    
+                    <div>
+                        <label for="contactPerson" class="block text-sm font-medium text-neutral-700 mb-1">联系人</label>
+                        <input type="text" id="contactPerson" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="联系人姓名">
+                    </div>
+                    
+                    <div>
+                        <label for="contactInfo" class="block text-sm font-medium text-neutral-700 mb-1">联系方式 <span class="text-danger">*</span></label>
+                        <input type="text" id="contactInfo" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="电话或邮箱">
+                        <p id="contactInfoError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 入库物料明细 -->
+            <div class="card-shadow p-5">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                    <h2 class="text-lg font-semibold text-neutral-800 pb-2 border-b border-neutral-200 w-full sm:w-auto">
+                        <i class="fa fa-cubes text-primary mr-2"></i>入库物料明细
+                    </h2>
+                    <button type="button" id="addItemBtn" class="mt-2 sm:mt-0 text-primary text-sm flex items-center btn-hover">
+                        <i class="fa fa-plus-circle mr-1"></i> 添加物料
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="itemsTable">
+                        <thead>
+                            <tr class="bg-neutral-50">
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">序号</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">物料编码 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">物料名称 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">规格型号</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">单位 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">入库数量 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">单价</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">批次号</th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">储位 <span class="text-danger">*</span></th>
+                                <th class="px-3 py-3 text-left text-neutral-700 font-medium">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <tr class="border-t border-neutral-200 item-row">
+                                <td class="px-3 py-3 item-index">1</td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-code w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="物料编码">
+                                    <p class="mt-1 text-sm text-danger item-code-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-name w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="物料名称">
+                                    <p class="mt-1 text-sm text-danger item-name-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-spec w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="规格型号">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-unit w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="单位">
+                                    <p class="mt-1 text-sm text-danger item-unit-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="number" min="1" class="item-quantity w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="入库数量">
+                                    <p class="mt-1 text-sm text-danger item-quantity-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="number" min="0" step="0.01" class="item-price w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="单价">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-batch w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="批次号">
+                                </td>
+                                <td class="px-3 py-3">
+                                    <input type="text" class="item-location w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                           placeholder="如：A-01-02">
+                                    <p class="mt-1 text-sm text-danger item-location-error hidden"></p>
+                                </td>
+                                <td class="px-3 py-3">
+                                    <button type="button" class="text-danger hover:text-danger/80 remove-item" disabled>
+                                        <i class="fa fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p id="itemsError" class="mt-2 text-sm text-danger hidden">请至少添加一种物料</p>
+            </div>
+
+            <!-- 入库凭证与备注 -->
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                    <i class="fa fa-file-text text-primary mr-2"></i>入库凭证与备注
+                </h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="voucherNo" class="block text-sm font-medium text-neutral-700 mb-1">凭证编号</label>
+                        <input type="text" id="voucherNo" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="入库凭证/发票编号">
+                    </div>
+                    
+                    <div>
+                        <label for="voucherDate" class="block text-sm font-medium text-neutral-700 mb-1">凭证日期</label>
+                        <input type="date" id="voucherDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    </div>
+                    
+                    <div>
+                        <label for="inspector" class="block text-sm font-medium text-neutral-700 mb-1">检验员 <span class="text-danger">*</span></label>
+                        <input type="text" id="inspector" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                               placeholder="检验员姓名">
+                        <p id="inspectorError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="inspectionResult" class="block text-sm font-medium text-neutral-700 mb-1">检验结果 <span class="text-danger">*</span></label>
+                        <select id="inspectionResult" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择检验结果</option>
+                            <option value="qualified">合格</option>
+                            <option value="part_qualified">部分合格</option>
+                            <option value="unqualified">不合格</option>
+                        </select>
+                        <p id="inspectionResultError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="remarks" class="block text-sm font-medium text-neutral-700 mb-1">备注信息</label>
+                        <textarea id="remarks" rows="3" 
+                                  class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                                  placeholder="请输入入库相关备注，如物料状态、特殊情况说明等"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-neutral-200">
+                <button type="button" id="resetBtn" class="px-5 py-2.5 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 btn-hover">
+                    重置
+                </button>
+                <button type="button" id="saveDraftBtn" class="px-5 py-2.5 border border-primary bg-primary/10 text-primary rounded-md btn-hover">
+                    保存草稿
+                </button>
+                <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                    确认记录
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const stockInRecordForm = document.getElementById('stockInRecordForm');
+        const itemsBody = document.getElementById('itemsBody');
+        const addItemBtn = document.getElementById('addItemBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const toast = document.getElementById('toast');
+        
+        // 初始化页面
+        function init() {
+            // 生成记录编号
+            generateRecordNo();
+            
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('stockInDate').value = today;
+            document.getElementById('voucherDate').value = today;
+            
+            // 添加物料行
+            addItemBtn.addEventListener('click', addItemRow);
+            
+            // 重置表单
+            resetBtn.addEventListener('click', function() {
+                if (confirm('确定要重置表单吗？所有已填写的内容将被清空。')) {
+                    stockInRecordForm.reset();
+                    // 保留默认值
+                    document.getElementById('recordNo').value = generateRecordNo();
+                    document.getElementById('stockInDate').value = today;
+                    document.getElementById('voucherDate').value = today;
+                    
+                    // 重置物料表格，只保留一行
+                    while (itemsBody.children.length > 1) {
+                        itemsBody.removeChild(itemsBody.lastChild);
+                    }
+                    
+                    // 重置第一行
+                    const firstRow = itemsBody.querySelector('.item-row');
+                    firstRow.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.value = '';
+                    });
+                    
+                    clearErrors();
+                    updateRemoveButtons();
+                    updateItemIndices();
+                }
+            });
+            
+            // 保存草稿
+            saveDraftBtn.addEventListener('click', function() {
+                if (validateBasicInfo()) {
+                    showToast('草稿已保存', 'info');
+                }
+            });
+            
+            // 表单提交
+            stockInRecordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateForm()) {
+                    // 模拟提交
+                    showToast('入库记录已成功保存', 'success');
+                    setTimeout(() => {
+                        // 实际应用中这里会提交到服务器
+                        console.log('入库记录保存成功');
+                    }, 800);
+                }
+            });
+            
+            // 初始化事件绑定
+            updateRemoveButtons();
+            bindRemoveItemEvents();
+        }
+        
+        // 生成记录编号
+        function generateRecordNo() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const random = Math.floor(100 + Math.random() * 900); // 3位随机数
+            const no = `R-IN-${year}${month}${day}-${hours}${minutes}-${random}`;
+            document.getElementById('recordNo').value = no;
+            return no;
+        }
+        
+        // 添加物料行
+        function addItemRow() {
+            const rows = document.querySelectorAll('.item-row');
+            const newIndex = rows.length + 1;
+            
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t border-neutral-200 item-row';
+            newRow.innerHTML = `
+                <td class="px-3 py-3 item-index">${newIndex}</td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-code w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="物料编码">
+                    <p class="mt-1 text-sm text-danger item-code-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-name w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="物料名称">
+                    <p class="mt-1 text-sm text-danger item-name-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-spec w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="规格型号">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-unit w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="单位">
+                    <p class="mt-1 text-sm text-danger item-unit-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="number" min="1" class="item-quantity w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="入库数量">
+                    <p class="mt-1 text-sm text-danger item-quantity-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="number" min="0" step="0.01" class="item-price w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="单价">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-batch w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="批次号">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="item-location w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"
+                           placeholder="如：A-01-02">
+                    <p class="mt-1 text-sm text-danger item-location-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <button type="button" class="text-danger hover:text-danger/80 remove-item">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            itemsBody.appendChild(newRow);
+            updateRemoveButtons();
+            bindRemoveItemEvents();
+        }
+        
+        // 绑定删除物料事件
+        function bindRemoveItemEvents() {
+            document.querySelectorAll('.remove-item').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (document.querySelectorAll('.item-row').length > 1) {
+                        this.closest('.item-row').remove();
+                        updateRemoveButtons();
+                        updateItemIndices();
+                    }
+                });
+            });
+        }
+        
+        // 更新删除按钮状态
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.item-row');
+            const removeButtons = document.querySelectorAll('.remove-item');
+            
+            if (rows.length <= 1) {
+                removeButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                });
+            } else {
+                removeButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            }
+        }
+        
+        // 更新物料序号
+        function updateItemIndices() {
+            const rows = document.querySelectorAll('.item-row');
+            rows.forEach((row, index) => {
+                row.querySelector('.item-index').textContent = index + 1;
+            });
+        }
+        
+        // 清除错误提示
+        function clearErrors() {
+            // 清除表单错误
+            document.querySelectorAll('[id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            
+            // 清除输入框错误状态
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.classList.remove('input-error');
+            });
+            
+            // 清除物料行错误
+            document.querySelectorAll('.item-code-error, .item-name-error, .item-unit-error, .item-quantity-error, .item-location-error').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+        
+        // 显示错误信息
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示物料行错误
+        function showItemRowError(inputEl, errorEl, message) {
+            inputEl.classList.add('input-error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 验证基本信息（保存草稿用）
+        function validateBasicInfo() {
+            let isValid = true;
+            clearErrors();
+            
+            // 入库单号验证
+            const stockInNo = document.getElementById('stockInNo');
+            if (!stockInNo.value.trim()) {
+                showError(stockInNo, 'stockInNoError', '请输入入库单号');
+                isValid = false;
+            }
+            
+            // 入库日期验证
+            const stockInDate = document.getElementById('stockInDate');
+            if (!stockInDate.value) {
+                showError(stockInDate, 'stockInDateError', '请选择入库日期');
+                isValid = false;
+            }
+            
+            // 操作类型验证
+            const operationType = document.getElementById('operationType');
+            if (!operationType.value) {
+                showError(operationType, 'operationTypeError', '请选择操作类型');
+                isValid = false;
+            }
+            
+            // 操作员验证
+            const operator = document.getElementById('operator');
+            if (!operator.value.trim()) {
+                showError(operator, 'operatorError', '请输入操作员姓名');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证完整表单
+        function validateForm() {
+            let isValid = true;
+            clearErrors();
+            
+            // 入库单号验证
+            const stockInNo = document.getElementById('stockInNo');
+            if (!stockInNo.value.trim()) {
+                showError(stockInNo, 'stockInNoError', '请输入入库单号');
+                isValid = false;
+            }
+            
+            // 入库日期验证
+            const stockInDate = document.getElementById('stockInDate');
+            if (!stockInDate.value) {
+                showError(stockInDate, 'stockInDateError', '请选择入库日期');
+                isValid = false;
+            }
+            
+            // 操作类型验证
+            const operationType = document.getElementById('operationType');
+            if (!operationType.value) {
+                showError(operationType, 'operationTypeError', '请选择操作类型');
+                isValid = false;
+            }
+            
+            // 入库仓库验证
+            const warehouse = document.getElementById('warehouse');
+            if (!warehouse.value) {
+                showError(warehouse, 'warehouseError', '请选择入库仓库');
+                isValid = false;
+            }
+            
+            // 操作员验证
+            const operator = document.getElementById('operator');
+            if (!operator.value.trim()) {
+                showError(operator, 'operatorError', '请输入操作员姓名');
+                isValid = false;
+            }
+            
+            // 来源名称验证
+            const sourceName = document.getElementById('sourceName');
+            if (!sourceName.value.trim()) {
+                showError(sourceName, 'sourceNameError', '请输入来源名称');
+                isValid = false;
+            }
+            
+            // 联系方式验证
+            const contactInfo = document.getElementById('contactInfo');
+            if (!contactInfo.value.trim()) {
+                showError(contactInfo, 'contactInfoError', '请输入联系方式');
+                isValid = false;
+            }
+            
+            // 物料明细验证
+            const itemRows = document.querySelectorAll('.item-row');
+            if (itemRows.length === 0) {
+                document.getElementById('itemsError').classList.remove('hidden');
+                isValid = false;
+            } else {
+                itemRows.forEach(row => {
+                    // 物料编码验证
+                    const codeInput = row.querySelector('.item-code');
+                    const codeError = row.querySelector('.item-code-error');
+                    if (!codeInput.value.trim()) {
+                        showItemRowError(codeInput, codeError, '物料编码不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 物料名称验证
+                    const nameInput = row.querySelector('.item-name');
+                    const nameError = row.querySelector('.item-name-error');
+                    if (!nameInput.value.trim()) {
+                        showItemRowError(nameInput, nameError, '物料名称不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 单位验证
+                    const unitInput = row.querySelector('.item-unit');
+                    const unitError = row.querySelector('.item-unit-error');
+                    if (!unitInput.value.trim()) {
+                        showItemRowError(unitInput, unitError, '单位不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 入库数量验证
+                    const quantityInput = row.querySelector('.item-quantity');
+                    const quantityError = row.querySelector('.item-quantity-error');
+                    if (!quantityInput.value || quantityInput.value <= 0) {
+                        showItemRowError(quantityInput, quantityError, '请输入有效的入库数量');
+                        isValid = false;
+                    }
+                    
+                    // 储位验证
+                    const locationInput = row.querySelector('.item-location');
+                    const locationError = row.querySelector('.item-location-error');
+                    if (!locationInput.value.trim()) {
+                        showItemRowError(locationInput, locationError, '请输入储位信息');
+                        isValid = false;
+                    } else if (!/^[A-Za-z]-\d{2,3}-\d{1,2}$/.test(locationInput.value.trim())) {
+                        showItemRowError(locationInput, locationError, '储位格式不正确，应为：区域-货架-层（如A-01-02）');
+                        isValid = false;
+                    }
+                });
+            }
+            
+            // 检验员验证
+            const inspector = document.getElementById('inspector');
+            if (!inspector.value.trim()) {
+                showError(inspector, 'inspectorError', '请输入检验员姓名');
+                isValid = false;
+            }
+            
+            // 检验结果验证
+            const inspectionResult = document.getElementById('inspectionResult');
+            if (!inspectionResult.value) {
+                showError(inspectionResult, 'inspectionResultError', '请选择检验结果');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>物料管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C',
+                        light: '#F2F3F5',
+                        dark: '#1D2129'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card {
+                @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary/50;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90 focus:ring-success/50;
+            }
+            .btn-warning {
+                @apply bg-warning text-white hover:bg-warning/90 focus:ring-warning/50;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90 focus:ring-danger/50;
+            }
+            .btn-outline {
+                @apply border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all;
+            }
+            .form-select {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all appearance-none bg-white;
+            }
+            .form-error {
+                @apply border-danger focus:ring-danger/50 focus:border-danger;
+            }
+            .table-row-hover {
+                @apply hover:bg-gray-50 transition-colors;
+            }
+            .badge {
+                @apply px-2 py-1 text-xs rounded-full font-medium;
+            }
+            .fade-in {
+                animation: fadeIn 0.3s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">物料管理</h1>
+            <p class="text-gray-500 mt-1">管理物料信息、库存及相关操作</p>
+        </div>
+
+        <!-- 操作按钮区 -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div class="relative w-full sm:w-64">
+                <input type="text" id="searchMaterial" placeholder="搜索物料..." 
+                       class="form-input pl-10">
+                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <div class="flex gap-3">
+                <button id="addMaterialBtn" class="btn btn-primary flex items-center gap-2">
+                    <i class="fa fa-plus"></i>
+                    <span>新增物料</span>
+                </button>
+                <button id="batchDeleteBtn" class="btn btn-danger flex items-center gap-2" disabled>
+                    <i class="fa fa-trash"></i>
+                    <span>批量删除</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 物料列表 -->
+        <div class="card mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-4 py-3 text-left w-12">
+                                <input type="checkbox" id="selectAll" class="w-4 h-4 text-primary rounded border-gray-300">
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">物料编码</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">物料名称</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">类别</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">单位</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">库存数量</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">状态</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="materialTableBody">
+                        <!-- 物料数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    显示 <span id="showingRange">1-5</span> 条，共 <span id="totalMaterials">0</span> 条
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑物料模态框 -->
+    <div id="materialModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden fade-in">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-semibold">新增物料</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="materialForm" class="p-5 space-y-4">
+                <input type="hidden" id="materialId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="materialCode" class="block text-sm font-medium text-gray-700 mb-1">
+                            物料编码 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="materialCode" class="form-input" placeholder="请输入物料编码">
+                        <p id="materialCodeError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="materialName" class="block text-sm font-medium text-gray-700 mb-1">
+                            物料名称 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="materialName" class="form-input" placeholder="请输入物料名称">
+                        <p id="materialNameError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                            物料类别 <span class="text-danger">*</span>
+                        </label>
+                        <select id="category" class="form-select">
+                            <option value="">请选择类别</option>
+                            <option value="raw">原材料</option>
+                            <option value="semi">半成品</option>
+                            <option value="finished">成品</option>
+                            <option value="consumable">消耗品</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <p id="categoryError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="unit" class="block text-sm font-medium text-gray-700 mb-1">
+                            计量单位 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="unit" class="form-input" placeholder="如：个、件、kg、m等">
+                        <p id="unitError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">
+                            库存数量 <span class="text-danger">*</span>
+                        </label>
+                        <input type="number" id="quantity" class="form-input" placeholder="请输入库存数量" min="0" step="0.01">
+                        <p id="quantityError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="safetyStock" class="block text-sm font-medium text-gray-700 mb-1">
+                            安全库存
+                        </label>
+                        <input type="number" id="safetyStock" class="form-input" placeholder="请输入安全库存数量" min="0" step="0.01">
+                        <p id="safetyStockError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="specification" class="block text-sm font-medium text-gray-700 mb-1">
+                        规格型号
+                    </label>
+                    <input type="text" id="specification" class="form-input" placeholder="请输入规格型号">
+                </div>
+                
+                <div>
+                    <label for="supplier" class="block text-sm font-medium text-gray-700 mb-1">
+                        供应商
+                    </label>
+                    <input type="text" id="supplier" class="form-input" placeholder="请输入供应商名称">
+                </div>
+                
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                        物料描述
+                    </label>
+                    <textarea id="description" rows="3" class="form-input" placeholder="请输入物料描述信息"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        状态 <span class="text-danger">*</span>
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="active" checked class="w-4 h-4 text-primary">
+                            <span>启用</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="inactive" class="w-4 h-4 text-primary">
+                            <span>禁用</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" id="cancelBtn" class="btn btn-outline">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden fade-in">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
+            <h3 class="text-lg font-semibold mb-3">确认删除</h3>
+            <p class="text-gray-600 mb-5" id="deleteConfirmText">您确定要删除选中的物料吗？此操作不可恢复。</p>
+            <input type="hidden" id="deleteMaterialId">
+            <div class="flex justify-end gap-3">
+                <button id="cancelDeleteBtn" class="btn btn-outline">取消</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // 模拟物料数据
+        let materials = [
+            { 
+                id: 1, 
+                code: 'MAT-001', 
+                name: '不锈钢板材', 
+                category: 'raw', 
+                categoryName: '原材料',
+                unit: 'kg', 
+                quantity: 250.5, 
+                safetyStock: 50,
+                specification: '304不锈钢，厚度2mm',
+                supplier: '华星金属材料有限公司',
+                description: '用于生产设备外壳',
+                status: 'active',
+                createdAt: '2023-01-15'
+            },
+            { 
+                id: 2, 
+                code: 'MAT-002', 
+                name: '控制面板', 
+                category: 'semi', 
+                categoryName: '半成品',
+                unit: '个', 
+                quantity: 45, 
+                safetyStock: 10,
+                specification: '12cm×8cm',
+                supplier: '电子元件厂',
+                description: '设备操作控制面板',
+                status: 'active',
+                createdAt: '2023-01-20'
+            },
+            { 
+                id: 3, 
+                code: 'MAT-003', 
+                name: '成品包装纸盒', 
+                category: 'consumable', 
+                categoryName: '消耗品',
+                unit: '个', 
+                quantity: 500, 
+                safetyStock: 100,
+                specification: '30cm×20cm×15cm',
+                supplier: '包装材料有限公司',
+                description: '产品外包装',
+                status: 'active',
+                createdAt: '2023-02-05'
+            },
+            { 
+                id: 4, 
+                code: 'MAT-004', 
+                name: '轴承', 
+                category: 'raw', 
+                categoryName: '原材料',
+                unit: '个', 
+                quantity: 78, 
+                safetyStock: 20,
+                specification: '型号6205',
+                supplier: '精密轴承厂',
+                description: '设备旋转部件',
+                status: 'active',
+                createdAt: '2023-02-10'
+            },
+            { 
+                id: 5, 
+                code: 'MAT-005', 
+                name: '旧款电机', 
+                category: 'raw', 
+                categoryName: '原材料',
+                unit: '台', 
+                quantity: 5, 
+                safetyStock: 0,
+                specification: '功率0.75kW',
+                supplier: '电机制造有限公司',
+                description: '旧型号电机，已停产',
+                status: 'inactive',
+                createdAt: '2023-01-05'
+            },
+            { 
+                id: 6, 
+                code: 'MAT-006', 
+                name: '新型电机', 
+                category: 'raw', 
+                categoryName: '原材料',
+                unit: '台', 
+                quantity: 32, 
+                safetyStock: 10,
+                specification: '功率1.1kW，高效节能',
+                supplier: '电机制造有限公司',
+                description: '替代MAT-005的新型号',
+                status: 'active',
+                createdAt: '2023-03-15'
+            },
+            { 
+                id: 7, 
+                code: 'MAT-007', 
+                name: '装配螺丝套件', 
+                category: 'consumable', 
+                categoryName: '消耗品',
+                unit: '套', 
+                quantity: 120, 
+                safetyStock: 50,
+                specification: '包含多种规格螺丝',
+                supplier: '标准件厂',
+                description: '设备装配用螺丝组合',
+                status: 'active',
+                createdAt: '2023-03-20'
+            }
+        ];
+
+        // 分页配置
+        const pageSize = 5;
+        let currentPage = 1;
+        let filteredMaterials = [...materials];
+
+        // DOM元素
+        const materialTableBody = document.getElementById('materialTableBody');
+        const addMaterialBtn = document.getElementById('addMaterialBtn');
+        const materialModal = document.getElementById('materialModal');
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const materialForm = document.getElementById('materialForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const materialIdInput = document.getElementById('materialId');
+        const confirmModal = document.getElementById('confirmModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteMaterialIdInput = document.getElementById('deleteMaterialId');
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        const searchInput = document.getElementById('searchMaterial');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const paginationContainer = document.getElementById('pagination');
+        const showingRangeText = document.getElementById('showingRange');
+        const totalMaterialsText = document.getElementById('totalMaterials');
+        const toast = document.getElementById('toast');
+
+        // 物料类别映射
+        const categoryMap = {
+            'raw': '原材料',
+            'semi': '半成品',
+            'finished': '成品',
+            'consumable': '消耗品',
+            'other': '其他'
+        };
+
+        // 状态样式映射
+        const statusMap = {
+            'active': { text: '启用', class: 'bg-success/10 text-success' },
+            'inactive': { text: '禁用', class: 'bg-gray-100 text-gray-500' }
+        };
+
+        // 初始化页面
+        function init() {
+            renderMaterialTable();
+            setupEventListeners();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 打开新增物料模态框
+            addMaterialBtn.addEventListener('click', () => {
+                openMaterialModal();
+            });
+
+            // 关闭模态框
+            closeModal.addEventListener('click', closeMaterialModal);
+            cancelBtn.addEventListener('click', closeMaterialModal);
+
+            // 提交物料表单
+            materialForm.addEventListener('submit', handleFormSubmit);
+
+            // 确认删除相关
+            cancelDeleteBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+
+            confirmDeleteBtn.addEventListener('click', () => {
+                const materialId = parseInt(deleteMaterialIdInput.value);
+                deleteMaterial(materialId);
+                confirmModal.classList.add('hidden');
+            });
+
+            // 全选 checkbox
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+
+            // 搜索物料
+            searchInput.addEventListener('input', handleSearch);
+
+            // 分页按钮
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+        }
+
+        // 渲染物料表格
+        function renderMaterialTable() {
+            // 计算分页
+            const totalPages = Math.ceil(filteredMaterials.length / pageSize);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredMaterials.length);
+            const currentMaterials = filteredMaterials.slice(startIndex, endIndex);
+
+            // 更新显示范围和总数
+            showingRangeText.textContent = filteredMaterials.length > 0 ? `${startIndex + 1}-${endIndex}` : '0-0';
+            totalMaterialsText.textContent = filteredMaterials.length;
+
+            // 清空表格
+            materialTableBody.innerHTML = '';
+
+            // 没有数据时显示空状态
+            if (currentMaterials.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="8" class="px-4 py-10 text-center text-gray-500">
+                        <i class="fa fa-cubes text-3xl mb-2 block"></i>
+                        没有找到匹配的物料
+                    </td>
+                `;
+                materialTableBody.appendChild(emptyRow);
+            } else {
+                // 渲染物料数据
+                currentMaterials.forEach(material => {
+                    // 库存预警判断
+                    const isStockLow = material.quantity <= material.safetyStock && material.safetyStock > 0;
+                    
+                    const row = document.createElement('tr');
+                    row.className = `border-b border-gray-100 table-row-hover ${isStockLow ? 'bg-warning/5' : ''}`;
+                    row.innerHTML = `
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="material-checkbox w-4 h-4 text-primary rounded border-gray-300" 
+                                   data-id="${material.id}">
+                        </td>
+                        <td class="px-4 py-3 font-medium">${material.code}</td>
+                        <td class="px-4 py-3">${material.name}</td>
+                        <td class="px-4 py-3">${material.categoryName}</td>
+                        <td class="px-4 py-3">${material.unit}</td>
+                        <td class="px-4 py-3 ${isStockLow ? 'text-warning font-medium' : ''}">
+                            ${material.quantity}
+                            ${isStockLow ? '<i class="fa fa-exclamation-circle ml-1"></i>' : ''}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="badge ${statusMap[material.status].class}">${statusMap[material.status].text}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button class="text-primary hover:text-primary/80" 
+                                        onclick="editMaterial(${material.id})">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="text-danger hover:text-danger/80" 
+                                        onclick="openDeleteConfirm(${material.id})">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <button class="text-gray-500 hover:text-gray-700"
+                                        onclick="toggleMaterialStatus(${material.id}, '${material.status}')">
+                                    <i class="fa ${material.status === 'active' ? 'fa-lock' : 'fa-unlock'}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    materialTableBody.appendChild(row);
+                });
+
+                // 为物料行的checkbox添加事件监听
+                document.querySelectorAll('.material-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateBatchDeleteButton);
+                });
+            }
+
+            // 渲染分页
+            renderPagination(totalPages);
+
+            // 更新分页按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+
+        // 渲染分页
+        function renderPagination(totalPages) {
+            paginationContainer.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            // 添加第一页按钮（如果当前范围不包含第一页）
+            if (startPage > 1) {
+                addPageButton(1);
+                if (startPage > 2) {
+                    addEllipsis();
+                }
+            }
+            
+            // 添加中间页码
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(i);
+            }
+            
+            // 添加最后一页按钮（如果当前范围不包含最后一页）
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    addEllipsis();
+                }
+                addPageButton(totalPages);
+            }
+        }
+
+        // 添加页码按钮
+        function addPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.className = `btn btn-outline px-3 py-1 ${currentPage === pageNum ? 'bg-primary text-white border-primary' : ''}`;
+            button.textContent = pageNum;
+            button.addEventListener('click', () => {
+                currentPage = pageNum;
+                renderMaterialTable();
+            });
+            paginationContainer.appendChild(button);
+        }
+
+        // 添加省略号
+        function addEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'flex items-center px-2 text-gray-500';
+            ellipsis.textContent = '...';
+            paginationContainer.appendChild(ellipsis);
+        }
+
+        // 上一页
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderMaterialTable();
+            }
+        }
+
+        // 下一页
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredMaterials.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderMaterialTable();
+            }
+        }
+
+        // 打开物料模态框
+        function openMaterialModal(materialId = null) {
+            // 重置表单和错误信息
+            materialForm.reset();
+            clearFormErrors();
+            materialIdInput.value = '';
+            
+            if (materialId) {
+                // 编辑物料
+                modalTitle.textContent = '编辑物料';
+                const material = materials.find(m => m.id === materialId);
+                if (material) {
+                    materialIdInput.value = material.id;
+                    document.getElementById('materialCode').value = material.code;
+                    document.getElementById('materialName').value = material.name;
+                    document.getElementById('category').value = material.category;
+                    document.getElementById('unit').value = material.unit;
+                    document.getElementById('quantity').value = material.quantity;
+                    document.getElementById('safetyStock').value = material.safetyStock;
+                    document.getElementById('specification').value = material.specification || '';
+                    document.getElementById('supplier').value = material.supplier || '';
+                    document.getElementById('description').value = material.description || '';
+                    
+                    // 设置状态
+                    document.querySelector(`input[name="status"][value="${material.status}"]`).checked = true;
+                    
+                    // 编辑时物料编码只读
+                    document.getElementById('materialCode').setAttribute('readonly', 'readonly');
+                }
+            } else {
+                // 新增物料
+                modalTitle.textContent = '新增物料';
+                document.getElementById('materialCode').removeAttribute('readonly');
+            }
+            
+            materialModal.classList.remove('hidden');
+        }
+
+        // 关闭物料模态框
+        function closeMaterialModal() {
+            materialModal.classList.add('hidden');
+        }
+
+        // 处理表单提交
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (validateForm()) {
+                const materialId = materialIdInput.value;
+                const category = document.getElementById('category').value;
+                
+                const materialData = {
+                    code: document.getElementById('materialCode').value.trim(),
+                    name: document.getElementById('materialName').value.trim(),
+                    category: category,
+                    categoryName: categoryMap[category],
+                    unit: document.getElementById('unit').value.trim(),
+                    quantity: parseFloat(document.getElementById('quantity').value),
+                    safetyStock: document.getElementById('safetyStock').value ? parseFloat(document.getElementById('safetyStock').value) : 0,
+                    specification: document.getElementById('specification').value.trim(),
+                    supplier: document.getElementById('supplier').value.trim(),
+                    description: document.getElementById('description').value.trim(),
+                    status: document.querySelector('input[name="status"]:checked').value
+                };
+                
+                if (!materialId) {
+                    // 新增物料
+                    materialData.id = Date.now();
+                    materialData.createdAt = new Date().toLocaleDateString('zh-CN');
+                    materials.push(materialData);
+                    showToast('物料添加成功', 'success');
+                } else {
+                    // 编辑物料
+                    const index = materials.findIndex(m => m.id === parseInt(materialId));
+                    if (index !== -1) {
+                        // 保留创建时间
+                        materialData.createdAt = materials[index].createdAt;
+                        materials[index] = { ...materialData, id: parseInt(materialId) };
+                        showToast('物料更新成功', 'success');
+                    }
+                }
+                
+                // 刷新表格并关闭模态框
+                filterMaterials();
+                renderMaterialTable();
+                closeMaterialModal();
+            }
+        }
+
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            clearFormErrors();
+            
+            // 验证物料编码
+            const materialCode = document.getElementById('materialCode').value.trim();
+            if (!materialCode) {
+                showError('materialCode', '请输入物料编码');
+                isValid = false;
+            } else if (materialCode.length < 3 || materialCode.length > 20) {
+                showError('materialCode', '物料编码长度应在3-20个字符之间');
+                isValid = false;
+            } else if (!materialIdInput.value && materials.some(m => m.code === materialCode)) {
+                showError('materialCode', '该物料编码已被使用');
+                isValid = false;
+            }
+            
+            // 验证物料名称
+            const materialName = document.getElementById('materialName').value.trim();
+            if (!materialName) {
+                showError('materialName', '请输入物料名称');
+                isValid = false;
+            } else if (materialName.length < 2 || materialName.length > 50) {
+                showError('materialName', '物料名称长度应在2-50个字符之间');
+                isValid = false;
+            }
+            
+            // 验证物料类别
+            const category = document.getElementById('category').value;
+            if (!category) {
+                showError('category', '请选择物料类别');
+                isValid = false;
+            }
+            
+            // 验证计量单位
+            const unit = document.getElementById('unit').value.trim();
+            if (!unit) {
+                showError('unit', '请输入计量单位');
+                isValid = false;
+            } else if (unit.length > 10) {
+                showError('unit', '计量单位长度不能超过10个字符');
+                isValid = false;
+            }
+            
+            // 验证库存数量
+            const quantity = document.getElementById('quantity').value;
+            if (!quantity) {
+                showError('quantity', '请输入库存数量');
+                isValid = false;
+            } else if (isNaN(quantity) || parseFloat(quantity) < 0) {
+                showError('quantity', '请输入有效的库存数量');
+                isValid = false;
+            }
+            
+            // 验证安全库存（如果填写）
+            const safetyStock = document.getElementById('safetyStock').value;
+            if (safetyStock && (isNaN(safetyStock) || parseFloat(safetyStock) < 0)) {
+                showError('safetyStock', '请输入有效的安全库存数量');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+
+        // 显示错误信息
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(`${fieldId}Error`);
+            
+            field.classList.add('form-error');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        // 清除表单错误
+        function clearFormErrors() {
+            ['materialCode', 'materialName', 'category', 'unit', 'quantity', 'safetyStock'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const errorElement = document.getElementById(`${fieldId}Error`);
+                
+                field.classList.remove('form-error');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                    errorElement.textContent = '';
+                }
+            });
+        }
+
+        // 打开删除确认
+        function openDeleteConfirm(materialId) {
+            deleteMaterialIdInput.value = materialId;
+            
+            const material = materials.find(m => m.id === materialId);
+            if (material && material.quantity > 0) {
+                document.getElementById('deleteConfirmText').textContent = 
+                    `该物料"${material.name}"当前库存为${material.quantity}${material.unit}，确定要删除吗？此操作不可恢复。`;
+            } else {
+                document.getElementById('deleteConfirmText').textContent = 
+                    `您确定要删除物料"${material ? material.name : ''}"吗？此操作不可恢复。`;
+            }
+            
+            confirmModal.classList.remove('hidden');
+        }
+
+        // 删除物料
+        function deleteMaterial(materialId) {
+            const initialLength = materials.length;
+            materials = materials.filter(material => material.id !== materialId);
+            
+            if (materials.length < initialLength) {
+                showToast('物料已删除', 'success');
+                filterMaterials();
+                renderMaterialTable();
+            }
+        }
+
+        // 编辑物料
+        function editMaterial(materialId) {
+            openMaterialModal(materialId);
+        }
+
+        // 切换物料状态
+        function toggleMaterialStatus(materialId, currentStatus) {
+            const index = materials.findIndex(material => material.id === materialId);
+            if (index !== -1) {
+                const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                materials[index].status = newStatus;
+                showToast(`物料已${newStatus === 'active' ? '启用' : '禁用'}`, 'success');
+                renderMaterialTable();
+            }
+        }
+
+        // 处理全选
+        function handleSelectAll() {
+            const isChecked = selectAllCheckbox.checked;
+            document.querySelectorAll('.material-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量删除按钮状态
+        function updateBatchDeleteButton() {
+            const checkedCount = document.querySelectorAll('.material-checkbox:checked').length;
+            batchDeleteBtn.disabled = checkedCount === 0;
+            
+            // 更新全选框状态
+            const totalCheckboxes = document.querySelectorAll('.material-checkbox').length;
+            selectAllCheckbox.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+        }
+
+        // 处理搜索
+        function handleSearch() {
+            filterMaterials();
+            currentPage = 1; // 重置到第一页
+            renderMaterialTable();
+        }
+
+        // 过滤物料
+        function filterMaterials() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            if (searchTerm) {
+                filteredMaterials = materials.filter(material => 
+                    material.code.toLowerCase().includes(searchTerm) || 
+                    material.name.toLowerCase().includes(searchTerm) ||
+                    material.categoryName.toLowerCase().includes(searchTerm) ||
+                    material.specification.toLowerCase().includes(searchTerm) ||
+                    material.supplier.toLowerCase().includes(searchTerm)
+                );
+            } else {
+                filteredMaterials = [...materials];
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 暴露函数到全局，供HTML中直接调用
+        window.editMaterial = editMaterial;
+        window.openDeleteConfirm = openDeleteConfirm;
+        window.toggleMaterialStatus = toggleMaterialStatus;
+    </script>
+</body>
+</html>
+    

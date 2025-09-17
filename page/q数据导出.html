@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据导出</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#4f46e5',
+                        success: '#16a34a',
+                        danger: '#dc2626',
+                        warning: '#ea580c',
+                        neutral: {
+                            100: '#f3f4f6',
+                            200: '#e5e7eb',
+                            300: '#d1d5db',
+                            400: '#9ca3af',
+                            500: '#6b7280',
+                            600: '#4b5563',
+                            700: '#374151',
+                            800: '#1f2937',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white overflow-hidden;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+            .required-mark {
+                @apply text-danger inline-block ml-1;
+            }
+            .checkbox-group-item {
+                @apply flex items-center gap-2 mb-3 cursor-pointer;
+            }
+            .progress-container {
+                @apply h-2 w-full bg-neutral-200 rounded-full overflow-hidden;
+            }
+            .progress-bar {
+                @apply h-full bg-primary rounded-full transition-all duration-300;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-5xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">数据导出</h1>
+            <p class="text-neutral-500 mt-1">自定义导出数据范围、格式和内容</p>
+        </div>
+
+        <!-- 导出设置表单 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-cog text-primary mr-2"></i>导出设置
+            </h2>
+            
+            <form id="exportForm" class="space-y-6">
+                <!-- 数据范围选择 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="startDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                            开始日期 <span class="required-mark">*</span>
+                        </label>
+                        <input type="date" id="startDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <p id="startDateError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="endDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                            结束日期 <span class="required-mark">*</span>
+                        </label>
+                        <input type="date" id="endDate" 
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <p id="endDateError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                </div>
+                
+                <!-- 数据类别选择 -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-3">
+                        数据类别 <span class="required-mark">*</span>
+                    </label>
+                    <div id="categoryError" class="text-sm text-danger mb-3 hidden"></div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categorySales" name="dataCategories" value="sales" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categorySales">销售数据</label>
+                        </div>
+                        
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categoryInventory" name="dataCategories" value="inventory" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categoryInventory">库存数据</label>
+                        </div>
+                        
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categoryCustomers" name="dataCategories" value="customers" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categoryCustomers">客户数据</label>
+                        </div>
+                        
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categoryProducts" name="dataCategories" value="products" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categoryProducts">商品数据</label>
+                        </div>
+                        
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categoryOrders" name="dataCategories" value="orders" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categoryOrders">订单数据</label>
+                        </div>
+                        
+                        <div class="checkbox-group-item">
+                            <input type="checkbox" id="categorySuppliers" name="dataCategories" value="suppliers" 
+                                   class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                            <label for="categorySuppliers">供应商数据</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 导出格式和选项 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="exportFormat" class="block text-sm font-medium text-neutral-700 mb-1">
+                            导出格式 <span class="required-mark">*</span>
+                        </label>
+                        <select id="exportFormat" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="">请选择导出格式</option>
+                            <option value="excel">Excel (.xlsx)</option>
+                            <option value="csv">CSV (.csv)</option>
+                            <option value="pdf">PDF文档 (.pdf)</option>
+                            <option value="json">JSON (.json)</option>
+                        </select>
+                        <p id="exportFormatError" class="mt-1 text-sm text-danger hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="compression" class="block text-sm font-medium text-neutral-700 mb-1">
+                            压缩选项
+                        </label>
+                        <select id="compression" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <option value="none">不压缩</option>
+                            <option value="zip">ZIP压缩</option>
+                            <option value="7z">7Z压缩</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 高级选项 -->
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="block text-sm font-medium text-neutral-700">
+                            高级选项
+                        </label>
+                        <button type="button" id="toggleAdvancedOptions" class="text-primary text-sm hover:underline">
+                            <i class="fa fa-chevron-down mr-1"></i> 展开
+                        </button>
+                    </div>
+                    
+                    <div id="advancedOptions" class="hidden pl-1 border-l-2 border-neutral-200 space-y-4 py-2">
+                        <div>
+                            <label class="block text-sm font-medium text-neutral-700 mb-1">
+                                数据包含项
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="checkbox-group-item">
+                                    <input type="checkbox" id="includeHeaders" name="advancedOptions" value="headers" 
+                                           class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary" checked>
+                                    <label for="includeHeaders">包含列标题</label>
+                                </div>
+                                
+                                <div class="checkbox-group-item">
+                                    <input type="checkbox" id="includeSummary" name="advancedOptions" value="summary" 
+                                           class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                                    <label for="includeSummary">包含数据摘要</label>
+                                </div>
+                                
+                                <div class="checkbox-group-item">
+                                    <input type="checkbox" id="includeFormulas" name="advancedOptions" value="formulas" 
+                                           class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                                    <label for="includeFormulas">包含计算公式</label>
+                                </div>
+                                
+                                <div class="checkbox-group-item">
+                                    <input type="checkbox" id="includeFormatting" name="advancedOptions" value="formatting" 
+                                           class="w-4 h-4 text-primary rounded border-neutral-300 focus:ring-primary">
+                                    <label for="includeFormatting">保留数据格式</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="exportLimit" class="block text-sm font-medium text-neutral-700 mb-1">
+                                最大记录数
+                            </label>
+                            <input type="number" id="exportLimit" min="100" max="10000" step="100" value="1000"
+                                   class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <p class="mt-1 text-xs text-neutral-500">
+                                一次导出的最大记录数，范围: 100-10000
+                            </p>
+                        </div>
+                        
+                        <div>
+                            <label for="passwordProtect" class="block text-sm font-medium text-neutral-700 mb-1">
+                                密码保护 (可选)
+                            </label>
+                            <input type="password" id="passwordProtect" placeholder="设置密码保护导出文件"
+                                   class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                            <p class="mt-1 text-xs text-neutral-500">
+                                设置密码后，打开导出文件需要输入此密码
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 导出备注 -->
+                <div>
+                    <label for="exportRemark" class="block text-sm font-medium text-neutral-700 mb-1">
+                        导出备注 (可选)
+                    </label>
+                    <textarea id="exportRemark" rows="2" placeholder="输入关于本次导出的备注信息"
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus"></textarea>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-neutral-200">
+                    <button type="reset" id="resetForm" class="px-5 py-2.5 border border-neutral-300 bg-white text-neutral-700 rounded-md btn-hover">
+                        <i class="fa fa-refresh mr-1"></i> 重置设置
+                    </button>
+                    <button type="submit" id="startExport" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-download mr-1"></i> 开始导出
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 导出历史记录 -->
+        <div class="card-shadow mb-6">
+            <div class="p-5 border-b border-neutral-200">
+                <h2 class="text-lg font-semibold text-neutral-800">
+                    <i class="fa fa-history text-primary mr-2"></i>导出历史记录
+                </h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-neutral-50">
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">导出时间</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">数据类别</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">格式</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">记录数</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">状态</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exportHistoryTable">
+                        <!-- 历史记录将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="p-5 border-t border-neutral-200 flex justify-between items-center">
+                <button id="clearHistory" class="text-danger text-sm hover:underline btn-hover">
+                    <i class="fa fa-trash mr-1"></i> 清空历史记录
+                </button>
+                <div class="text-neutral-500 text-sm">
+                    共 <span id="historyCount">0</span> 条记录
+                </div>
+            </div>
+        </div>
+
+        <!-- 导出进度模态框 -->
+        <div id="exportProgressModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-neutral-800">正在导出数据</h3>
+                    <button id="cancelExport" class="text-neutral-400 hover:text-danger">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <p id="exportProgressText" class="text-neutral-600 mb-2">准备导出数据...</p>
+                    <div class="progress-container">
+                        <div id="exportProgressBar" class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <p id="exportPercentage" class="text-right text-sm text-neutral-500 mt-1">0%</p>
+                </div>
+                
+                <div id="exportSuccessContent" class="hidden">
+                    <div class="flex items-center text-success mb-4">
+                        <i class="fa fa-check-circle text-xl mr-2"></i>
+                        <p>数据导出成功！</p>
+                    </div>
+                    <button id="downloadExportedFile" class="w-full py-2 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-download mr-1"></i> 下载文件
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提示消息 -->
+        <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+    </div>
+
+    <script>
+        // DOM元素
+        const exportForm = document.getElementById('exportForm');
+        const toggleAdvancedOptions = document.getElementById('toggleAdvancedOptions');
+        const advancedOptions = document.getElementById('advancedOptions');
+        const resetForm = document.getElementById('resetForm');
+        const exportHistoryTable = document.getElementById('exportHistoryTable');
+        const historyCount = document.getElementById('historyCount');
+        const clearHistory = document.getElementById('clearHistory');
+        const exportProgressModal = document.getElementById('exportProgressModal');
+        const exportProgressBar = document.getElementById('exportProgressBar');
+        const exportProgressText = document.getElementById('exportProgressText');
+        const exportPercentage = document.getElementById('exportPercentage');
+        const cancelExport = document.getElementById('cancelExport');
+        const exportSuccessContent = document.getElementById('exportSuccessContent');
+        const downloadExportedFile = document.getElementById('downloadExportedFile');
+        const toast = document.getElementById('toast');
+        
+        // 导出历史记录数据
+        let exportHistory = [
+            {
+                id: 1,
+                timestamp: '2023-06-15 09:32:45',
+                categories: ['销售数据', '库存数据'],
+                format: 'Excel',
+                recordCount: 1256,
+                status: 'completed',
+                fileName: 'sales_inventory_20230615.xlsx'
+            },
+            {
+                id: 2,
+                timestamp: '2023-06-12 14:15:30',
+                categories: ['客户数据'],
+                format: 'CSV',
+                recordCount: 5892,
+                status: 'completed',
+                fileName: 'customers_20230612.csv'
+            },
+            {
+                id: 3,
+                timestamp: '2023-06-10 16:48:12',
+                categories: ['订单数据', '商品数据'],
+                format: 'PDF',
+                recordCount: 2340,
+                status: 'failed',
+                fileName: ''
+            },
+            {
+                id: 4,
+                timestamp: '2023-06-08 11:23:56',
+                categories: ['供应商数据'],
+                format: 'Excel',
+                recordCount: 128,
+                status: 'completed',
+                fileName: 'suppliers_20230608.xlsx'
+            }
+        ];
+        
+        // 导出状态映射
+        const statusMap = {
+            'completed': { text: '已完成', class: 'bg-success/10 text-success' },
+            'processing': { text: '处理中', class: 'bg-warning/10 text-warning' },
+            'failed': { text: '失败', class: 'bg-danger/10 text-danger' },
+            'canceled': { text: '已取消', class: 'bg-neutral-100 text-neutral-500' }
+        };
+        
+        // 模拟导出进度的计时器
+        let exportTimer = null;
+        
+        // 初始化页面
+        function init() {
+            // 设置默认日期范围为最近30天
+            const today = new Date();
+            const lastThirtyDays = new Date();
+            lastThirtyDays.setDate(today.getDate() - 30);
+            
+            document.getElementById('startDate').value = lastThirtyDays.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            
+            // 加载导出历史记录
+            loadExportHistory();
+            
+            // 事件监听
+            toggleAdvancedOptions.addEventListener('click', toggleAdvancedOptionsHandler);
+            exportForm.addEventListener('submit', handleExportSubmit);
+            resetForm.addEventListener('click', resetFormHandler);
+            clearHistory.addEventListener('click', clearHistoryHandler);
+            cancelExport.addEventListener('click', cancelExportHandler);
+            downloadExportedFile.addEventListener('click', downloadExportedFileHandler);
+        }
+        
+        // 切换高级选项显示/隐藏
+        function toggleAdvancedOptionsHandler() {
+            const isHidden = advancedOptions.classList.contains('hidden');
+            
+            if (isHidden) {
+                advancedOptions.classList.remove('hidden');
+                toggleAdvancedOptions.innerHTML = '<i class="fa fa-chevron-up mr-1"></i> 收起';
+            } else {
+                advancedOptions.classList.add('hidden');
+                toggleAdvancedOptions.innerHTML = '<i class="fa fa-chevron-down mr-1"></i> 展开';
+            }
+        }
+        
+        // 处理导出表单提交
+        function handleExportSubmit(e) {
+            e.preventDefault();
+            
+            if (validateExportForm()) {
+                // 显示导出进度模态框
+                exportProgressModal.classList.remove('hidden');
+                exportSuccessContent.classList.add('hidden');
+                exportProgressBar.style.width = '0%';
+                exportPercentage.textContent = '0%';
+                exportProgressText.textContent = '正在准备导出数据...';
+                
+                // 模拟导出进度
+                let progress = 0;
+                clearInterval(exportTimer);
+                
+                exportTimer = setInterval(() => {
+                    progress += Math.floor(Math.random() * 5) + 1;
+                    
+                    if (progress >= 100) {
+                        progress = 100;
+                        clearInterval(exportTimer);
+                        
+                        // 导出完成
+                        exportProgressText.textContent = '数据导出完成';
+                        exportProgressBar.style.width = '100%';
+                        exportPercentage.textContent = '100%';
+                        
+                        // 显示成功内容
+                        setTimeout(() => {
+                            exportSuccessContent.classList.remove('hidden');
+                            
+                            // 添加到历史记录
+                            const selectedCategories = Array.from(document.querySelectorAll('input[name="dataCategories"]:checked'))
+                                .map(checkbox => checkbox.nextElementSibling.textContent);
+                            
+                            const formatSelect = document.getElementById('exportFormat');
+                            const formatText = formatSelect.options[formatSelect.selectedIndex].text;
+                            
+                            const newExport = {
+                                id: Date.now(),
+                                timestamp: new Date().toLocaleString('zh-CN'),
+                                categories: selectedCategories,
+                                format: formatText.split(' ')[0],
+                                recordCount: Math.floor(Math.random() * 1000) + 500,
+                                status: 'completed',
+                                fileName: `${selectedCategories.join('_')}_${new Date().getTime()}.${formatSelect.value}`
+                            };
+                            
+                            exportHistory.unshift(newExport);
+                            loadExportHistory();
+                        }, 800);
+                    } else {
+                        // 更新进度
+                        exportProgressBar.style.width = `${progress}%`;
+                        exportPercentage.textContent = `${progress}%`;
+                        
+                        // 更新进度文本
+                        if (progress < 30) {
+                            exportProgressText.textContent = '正在收集数据...';
+                        } else if (progress < 60) {
+                            exportProgressText.textContent = '正在处理数据...';
+                        } else if (progress < 90) {
+                            exportProgressText.textContent = '正在生成文件...';
+                        } else {
+                            exportProgressText.textContent = '即将完成...';
+                        }
+                    }
+                }, 300);
+            }
+        }
+        
+        // 重置表单处理
+        function resetFormHandler() {
+            // 清除错误提示
+            clearFormErrors();
+            
+            // 保持高级选项的状态
+            const isAdvancedVisible = !advancedOptions.classList.contains('hidden');
+            
+            // 重置表单
+            exportForm.reset();
+            
+            // 恢复高级选项状态
+            if (isAdvancedVisible) {
+                advancedOptions.classList.remove('hidden');
+                toggleAdvancedOptions.innerHTML = '<i class="fa fa-chevron-up mr-1"></i> 收起';
+            }
+            
+            // 重新设置默认日期
+            const today = new Date();
+            const lastThirtyDays = new Date();
+            lastThirtyDays.setDate(today.getDate() - 30);
+            
+            document.getElementById('startDate').value = lastThirtyDays.toISOString().split('T')[0];
+            document.getElementById('endDate').value = today.toISOString().split('T')[0];
+            
+            // 勾选默认选项
+            document.getElementById('includeHeaders').checked = true;
+            document.getElementById('exportLimit').value = 1000;
+            
+            showToast('表单已重置', 'info');
+        }
+        
+        // 加载导出历史记录
+        function loadExportHistory() {
+            exportHistoryTable.innerHTML = '';
+            historyCount.textContent = exportHistory.length;
+            
+            if (exportHistory.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="6" class="px-5 py-8 text-center text-neutral-500">
+                        <i class="fa fa-folder-open-o text-2xl mb-2 block"></i>
+                        暂无导出历史记录
+                    </td>
+                `;
+                exportHistoryTable.appendChild(emptyRow);
+                return;
+            }
+            
+            exportHistory.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-t border-neutral-200 hover:bg-neutral-50 transition-colors';
+                
+                row.innerHTML = `
+                    <td class="px-5 py-3">${item.timestamp}</td>
+                    <td class="px-5 py-3">
+                        <div class="flex flex-wrap gap-1">
+                            ${item.categories.map(cat => `
+                                <span class="px-2 py-0.5 bg-neutral-100 text-neutral-700 rounded text-xs">${cat}</span>
+                            `).join('')}
+                        </div>
+                    </td>
+                    <td class="px-5 py-3">${item.format}</td>
+                    <td class="px-5 py-3">${item.recordCount.toLocaleString()}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${statusMap[item.status].class}">
+                            ${statusMap[item.status].text}
+                        </span>
+                    </td>
+                    <td class="px-5 py-3">
+                        ${item.status === 'completed' ? `
+                            <button class="text-primary hover:text-primary/80 mr-3 btn-hover" 
+                                    onclick="downloadHistoricalFile('${item.fileName}')">
+                                <i class="fa fa-download"></i>
+                            </button>
+                        ` : ''}
+                        <button class="text-neutral-400 hover:text-danger btn-hover"
+                                onclick="deleteHistoryItem(${item.id})">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                exportHistoryTable.appendChild(row);
+            });
+        }
+        
+        // 清空历史记录
+        function clearHistoryHandler() {
+            if (exportHistory.length === 0) {
+                showToast('没有可清空的历史记录', 'info');
+                return;
+            }
+            
+            if (confirm('确定要清空所有导出历史记录吗？此操作不可恢复。')) {
+                exportHistory = [];
+                loadExportHistory();
+                showToast('导出历史记录已清空', 'success');
+            }
+        }
+        
+        // 删除单个历史记录
+        function deleteHistoryItem(id) {
+            exportHistory = exportHistory.filter(item => item.id !== id);
+            loadExportHistory();
+            showToast('历史记录已删除', 'info');
+        }
+        
+        // 下载历史文件
+        function downloadHistoricalFile(fileName) {
+            showToast(`正在下载文件: ${fileName}`, 'success');
+            // 实际应用中这里会处理文件下载逻辑
+        }
+        
+        // 取消导出
+        function cancelExportHandler() {
+            clearInterval(exportTimer);
+            exportProgressModal.classList.add('hidden');
+            
+            // 添加一个取消状态的记录
+            const selectedCategories = Array.from(document.querySelectorAll('input[name="dataCategories"]:checked'))
+                .map(checkbox => checkbox.nextElementSibling.textContent);
+            
+            if (selectedCategories.length > 0) {
+                const formatSelect = document.getElementById('exportFormat');
+                const formatText = formatSelect.options[formatSelect.selectedIndex]?.text || '未知格式';
+                
+                const canceledExport = {
+                    id: Date.now() + 1,
+                    timestamp: new Date().toLocaleString('zh-CN'),
+                    categories: selectedCategories,
+                    format: formatText.split(' ')[0],
+                    recordCount: 0,
+                    status: 'canceled',
+                    fileName: ''
+                };
+                
+                exportHistory.unshift(canceledExport);
+                loadExportHistory();
+            }
+            
+            showToast('导出已取消', 'warning');
+        }
+        
+        // 下载导出的文件
+        function downloadExportedFileHandler() {
+            const firstItem = exportHistory[0];
+            if (firstItem) {
+                showToast(`正在下载文件: ${firstItem.fileName}`, 'success');
+                exportProgressModal.classList.add('hidden');
+            }
+        }
+        
+        // 验证导出表单
+        function validateExportForm() {
+            let isValid = true;
+            clearFormErrors();
+            
+            // 验证日期
+            const startDate = document.getElementById('startDate');
+            if (!startDate.value) {
+                showError(startDate, 'startDateError', '请选择开始日期');
+                isValid = false;
+            }
+            
+            const endDate = document.getElementById('endDate');
+            if (!endDate.value) {
+                showError(endDate, 'endDateError', '请选择结束日期');
+                isValid = false;
+            }
+            
+            // 验证日期逻辑
+            if (isValid && new Date(startDate.value) > new Date(endDate.value)) {
+                showError(endDate, 'endDateError', '结束日期不能早于开始日期');
+                isValid = false;
+            }
+            
+            // 验证数据类别
+            const selectedCategories = document.querySelectorAll('input[name="dataCategories"]:checked');
+            if (selectedCategories.length === 0) {
+                document.getElementById('categoryError').textContent = '请至少选择一种数据类别';
+                document.getElementById('categoryError').classList.remove('hidden');
+                isValid = false;
+            }
+            
+            // 验证导出格式
+            const exportFormat = document.getElementById('exportFormat');
+            if (!exportFormat.value) {
+                showError(exportFormat, 'exportFormatError', '请选择导出格式');
+                isValid = false;
+            }
+            
+            // 验证导出限制
+            const exportLimit = document.getElementById('exportLimit');
+            if (exportLimit.value < 100 || exportLimit.value > 10000) {
+                // 这里只是提示，不阻止提交，因为输入框本身有min/max限制
+                showToast('最大记录数应在100-10000之间', 'warning');
+            }
+            
+            return isValid;
+        }
+        
+        // 清除表单错误
+        function clearFormErrors() {
+            // 清除日期错误
+            ['startDate', 'endDate', 'exportFormat'].forEach(id => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(`${id}Error`);
+                
+                el.classList.remove('input-error');
+                if (errorEl) {
+                    errorEl.classList.add('hidden');
+                    errorEl.textContent = '';
+                }
+            });
+            
+            // 清除类别错误
+            document.getElementById('categoryError').classList.add('hidden');
+            document.getElementById('categoryError').textContent = '';
+        }
+        
+        // 显示错误提示
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>库存分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e40af',
+                        secondary: '#64748b',
+                        success: '#166534',
+                        warning: '#c2410c',
+                        danger: '#dc2626',
+                        neutral: {
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                @apply shadow-sm border border-neutral-200 rounded-lg bg-white overflow-hidden;
+            }
+            .stat-card {
+                @apply card-shadow p-5 transition-all duration-300 hover:shadow-md;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+            .required-mark {
+                @apply text-danger inline-block ml-1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 p-4 md:p-6">
+    <div class="max-w-7xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6 text-center md:text-left">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-neutral-800">库存分析</h1>
+            <p class="text-neutral-500 mt-1">库存状况监控与数据分析</p>
+        </div>
+
+        <!-- 筛选条件 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-filter text-primary mr-2"></i>筛选条件
+            </h2>
+            
+            <form id="filterForm" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="analysisDate" class="block text-sm font-medium text-neutral-700 mb-1">
+                        分析日期 <span class="required-mark">*</span>
+                    </label>
+                    <input type="date" id="analysisDate" 
+                           class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                    <p id="analysisDateError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="categoryFilter" class="block text-sm font-medium text-neutral-700 mb-1">
+                        商品类别
+                    </label>
+                    <select id="categoryFilter" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">全部类别</option>
+                        <option value="electronics">电子产品</option>
+                        <option value="clothing">服装鞋帽</option>
+                        <option value="food">食品饮料</option>
+                        <option value="home">家居用品</option>
+                        <option value="others">其他类别</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="stockStatus" class="block text-sm font-medium text-neutral-700 mb-1">
+                        库存状态
+                    </label>
+                    <select id="stockStatus" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="">全部状态</option>
+                        <option value="normal">正常库存</option>
+                        <option value="low">库存偏低</option>
+                        <option value="out">缺货</option>
+                        <option value="overstock">库存积压</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-end">
+                    <button type="submit" class="w-full px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-search mr-1"></i> 分析库存
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 库存统计概览 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总商品种类</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalProducts">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <i class="fa fa-cubes"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 5.2%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上月</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">总库存数量</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalQuantity">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center text-success">
+                        <i class="fa fa-bar-chart"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-down mr-1"></i> 2.1%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上月</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">库存总价值(元)</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="totalValue">0.00</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-success flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 3.8%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上月</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-neutral-500 text-sm">低库存商品数</p>
+                        <h3 class="text-2xl font-bold text-neutral-800 mt-1" id="lowStockItems">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
+                        <i class="fa fa-exclamation-triangle"></i>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center text-sm">
+                    <span class="text-danger flex items-center">
+                        <i class="fa fa-arrow-up mr-1"></i> 12.5%
+                    </span>
+                    <span class="text-neutral-500 ml-2">较上月</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表分析区域 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-pie-chart text-primary mr-2"></i>库存类别分布
+                </h2>
+                <div class="h-80">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card-shadow p-5">
+                <h2 class="text-lg font-semibold text-neutral-800 mb-4">
+                    <i class="fa fa-line-chart text-primary mr-2"></i>库存趋势分析
+                </h2>
+                <div class="h-80">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 库存预警设置 -->
+        <div class="card-shadow p-5 mb-6">
+            <h2 class="text-lg font-semibold text-neutral-800 mb-4 pb-2 border-b border-neutral-200">
+                <i class="fa fa-bell text-primary mr-2"></i>库存预警设置
+            </h2>
+            
+            <form id="alertSettingsForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label for="lowStockThreshold" class="block text-sm font-medium text-neutral-700 mb-1">
+                        低库存阈值 <span class="required-mark">*</span>
+                    </label>
+                    <div class="flex items-center">
+                        <input type="number" min="1" id="lowStockThreshold" value="10"
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <span class="ml-2 text-neutral-500">件以下</span>
+                    </div>
+                    <p id="lowStockThresholdError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="overstockThreshold" class="block text-sm font-medium text-neutral-700 mb-1">
+                        库存积压阈值 <span class="required-mark">*</span>
+                    </label>
+                    <div class="flex items-center">
+                        <input type="number" min="1" id="overstockThreshold" value="100"
+                               class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <span class="ml-2 text-neutral-500">件以上</span>
+                    </div>
+                    <p id="overstockThresholdError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="alertFrequency" class="block text-sm font-medium text-neutral-700 mb-1">
+                        预警通知频率 <span class="required-mark">*</span>
+                    </label>
+                    <select id="alertFrequency" class="w-full px-3 py-2 border border-neutral-300 rounded-md form-input-focus">
+                        <option value="daily">每日</option>
+                        <option value="weekly" selected>每周</option>
+                        <option value="monthly">每月</option>
+                    </select>
+                    <p id="alertFrequencyError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div class="md:col-span-3 flex justify-end">
+                    <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-md btn-hover">
+                        <i class="fa fa-save mr-1"></i> 保存设置
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- 库存明细表格 -->
+        <div class="card-shadow mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 border-b border-neutral-200">
+                <h2 class="text-lg font-semibold text-neutral-800">
+                    <i class="fa fa-table text-primary mr-2"></i>库存明细
+                </h2>
+                <div class="mt-3 sm:mt-0 flex gap-2">
+                    <div class="relative">
+                        <input type="text" id="searchInventory" 
+                               class="pl-9 pr-3 py-2 border border-neutral-300 rounded-md form-input-focus w-full sm:w-64"
+                               placeholder="搜索商品...">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400"></i>
+                    </div>
+                    <button id="exportInventory" class="px-4 py-2 border border-primary bg-primary/10 text-primary rounded-md btn-hover">
+                        <i class="fa fa-download mr-1"></i> 导出数据
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-neutral-50">
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品编码</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">商品名称</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">类别</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">当前库存</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">单位成本(元)</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">库存价值(元)</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">最低库存</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">库存状态</th>
+                            <th class="px-5 py-3 text-left text-neutral-700 font-medium">最后入库日期</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <!-- 库存数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="p-5 border-t border-neutral-200 flex justify-between items-center flex-wrap gap-4">
+                <div class="text-neutral-500 text-sm">
+                    显示 <span id="showingRange">0-0</span> 条，共 <span id="totalItems">0</span> 条记录
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="px-3 py-1 border border-neutral-300 rounded-md text-neutral-700 btn-hover" disabled>
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const filterForm = document.getElementById('filterForm');
+        const alertSettingsForm = document.getElementById('alertSettingsForm');
+        const inventoryTableBody = document.getElementById('inventoryTableBody');
+        const searchInventory = document.getElementById('searchInventory');
+        const exportInventory = document.getElementById('exportInventory');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const pagination = document.getElementById('pagination');
+        const showingRange = document.getElementById('showingRange');
+        const totalItems = document.getElementById('totalItems');
+        const toast = document.getElementById('toast');
+        
+        // 统计数据元素
+        const totalProductsEl = document.getElementById('totalProducts');
+        const totalQuantityEl = document.getElementById('totalQuantity');
+        const totalValueEl = document.getElementById('totalValue');
+        const lowStockItemsEl = document.getElementById('lowStockItems');
+        
+        // 图表实例
+        let categoryChart = null;
+        let trendChart = null;
+        
+        // 分页参数
+        const pageSize = 10;
+        let currentPage = 1;
+        let totalPages = 1;
+        let filteredData = [];
+        
+        // 模拟库存数据
+        const inventoryData = [
+            { id: 'PROD001', name: '智能手机A1', category: 'electronics', quantity: 25, cost: 2999, minStock: 10, lastStockDate: '2023-05-15' },
+            { id: 'PROD002', name: '笔记本电脑Pro', category: 'electronics', quantity: 12, cost: 5999, minStock: 5, lastStockDate: '2023-05-10' },
+            { id: 'PROD003', name: '无线耳机', category: 'electronics', quantity: 45, cost: 799, minStock: 20, lastStockDate: '2023-05-20' },
+            { id: 'PROD004', name: '男士T恤', category: 'clothing', quantity: 89, cost: 99, minStock: 30, lastStockDate: '2023-04-28' },
+            { id: 'PROD005', name: '牛仔裤', category: 'clothing', quantity: 63, cost: 199, minStock: 25, lastStockDate: '2023-05-05' },
+            { id: 'PROD006', name: '运动鞋', category: 'clothing', quantity: 37, cost: 399, minStock: 15, lastStockDate: '2023-05-18' },
+            { id: 'PROD007', name: '休闲饼干', category: 'food', quantity: 120, cost: 15.9, minStock: 50, lastStockDate: '2023-05-02' },
+            { id: 'PROD008', name: '矿泉水', category: 'food', quantity: 200, cost: 2, minStock: 100, lastStockDate: '2023-05-22' },
+            { id: 'PROD009', name: '巧克力', category: 'food', quantity: 76, cost: 12.5, minStock: 30, lastStockDate: '2023-05-14' },
+            { id: 'PROD010', name: '毛巾', category: 'home', quantity: 42, cost: 18, minStock: 20, lastStockDate: '2023-04-30' },
+            { id: 'PROD011', name: '洗发水', category: 'home', quantity: 53, cost: 45, minStock: 25, lastStockDate: '2023-05-08' },
+            { id: 'PROD012', name: '洗衣液', category: 'home', quantity: 28, cost: 68, minStock: 15, lastStockDate: '2023-05-16' },
+            { id: 'PROD013', name: '钢笔', category: 'others', quantity: 9, cost: 35, minStock: 10, lastStockDate: '2023-04-25' },
+            { id: 'PROD014', name: '笔记本', category: 'others', quantity: 67, cost: 12, minStock: 30, lastStockDate: '2023-05-01' },
+            { id: 'PROD015', name: '文件夹', category: 'others', quantity: 33, cost: 8.5, minStock: 20, lastStockDate: '2023-05-12' }
+        ];
+
+        // 初始化页面
+        function init() {
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('analysisDate').value = today;
+            
+            // 初始化图表
+            initCharts();
+            
+            // 加载库存数据
+            filteredData = [...inventoryData];
+            updateInventoryTable();
+            updateStatistics();
+            
+            // 事件监听
+            filterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateFilterForm()) {
+                    applyFilters();
+                    currentPage = 1;
+                    updateInventoryTable();
+                    updateStatistics();
+                    updateCharts();
+                }
+            });
+            
+            alertSettingsForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateAlertSettings()) {
+                    showToast('库存预警设置已保存', 'success');
+                    // 实际应用中这里会保存到服务器
+                }
+            });
+            
+            searchInventory.addEventListener('input', function() {
+                currentPage = 1;
+                updateInventoryTable();
+            });
+            
+            exportInventory.addEventListener('click', function() {
+                showToast('库存数据导出成功', 'success');
+                // 实际应用中这里会处理导出逻辑
+            });
+            
+            prevPage.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updateInventoryTable();
+                }
+            });
+            
+            nextPage.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updateInventoryTable();
+                }
+            });
+        }
+        
+        // 初始化图表
+        function initCharts() {
+            // 库存类别分布图表
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            categoryChart = new Chart(categoryCtx, {
+                type: 'pie',
+                data: getCategoryChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 库存趋势分析图表
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            trendChart = new Chart(trendCtx, {
+                type: 'line',
+                data: getTrendChartData(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '库存数量'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '月份'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 更新图表数据
+        function updateCharts() {
+            categoryChart.data = getCategoryChartData();
+            categoryChart.update();
+            
+            trendChart.data = getTrendChartData();
+            trendChart.update();
+        }
+        
+        // 获取类别图表数据
+        function getCategoryChartData() {
+            const categoryMap = {
+                'electronics': { name: '电子产品', value: 0 },
+                'clothing': { name: '服装鞋帽', value: 0 },
+                'food': { name: '食品饮料', value: 0 },
+                'home': { name: '家居用品', value: 0 },
+                'others': { name: '其他类别', value: 0 }
+            };
+            
+            filteredData.forEach(item => {
+                if (categoryMap[item.category]) {
+                    categoryMap[item.category].value += item.quantity;
+                }
+            });
+            
+            const labels = [];
+            const data = [];
+            const backgroundColors = [
+                '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899'
+            ];
+            
+            Object.values(categoryMap).forEach((category, index) => {
+                if (category.value > 0) {
+                    labels.push(category.name);
+                    data.push(category.value);
+                }
+            });
+            
+            return {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors.slice(0, labels.length),
+                    borderWidth: 1
+                }]
+            };
+        }
+        
+        // 获取趋势图表数据
+        function getTrendChartData() {
+            // 按类别统计过去6个月的库存趋势（模拟数据）
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月'];
+            
+            // 模拟不同类别的趋势数据
+            return {
+                labels: months,
+                datasets: [
+                    {
+                        label: '电子产品',
+                        data: [65, 72, 68, 75, 82, 78],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: '服装鞋帽',
+                        data: [120, 135, 142, 138, 150, 145],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: '食品饮料',
+                        data: [200, 215, 230, 225, 240, 235],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            };
+        }
+        
+        // 应用筛选条件
+        function applyFilters() {
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('stockStatus').value;
+            const lowThreshold = parseInt(document.getElementById('lowStockThreshold').value) || 10;
+            const overstockThreshold = parseInt(document.getElementById('overstockThreshold').value) || 100;
+            
+            filteredData = inventoryData.filter(item => {
+                // 类别筛选
+                if (category && item.category !== category) {
+                    return false;
+                }
+                
+                // 库存状态筛选
+                if (status) {
+                    const stockStatus = getStockStatus(item.quantity, item.minStock, lowThreshold, overstockThreshold);
+                    if (stockStatus !== status) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+        }
+        
+        // 更新库存表格
+        function updateInventoryTable() {
+            // 搜索筛选
+            const searchTerm = searchInventory.value.toLowerCase().trim();
+            let dataToShow = filteredData.filter(item => 
+                item.id.toLowerCase().includes(searchTerm) || 
+                item.name.toLowerCase().includes(searchTerm)
+            );
+            
+            // 计算分页
+            totalPages = Math.ceil(dataToShow.length / pageSize);
+            if (currentPage > totalPages && totalPages > 0) {
+                currentPage = totalPages;
+            }
+            
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, dataToShow.length);
+            const paginatedData = dataToShow.slice(startIndex, endIndex);
+            
+            // 更新表格内容
+            inventoryTableBody.innerHTML = '';
+            const lowThreshold = parseInt(document.getElementById('lowStockThreshold').value) || 10;
+            const overstockThreshold = parseInt(document.getElementById('overstockThreshold').value) || 100;
+            
+            paginatedData.forEach(item => {
+                const stockStatus = getStockStatus(item.quantity, item.minStock, lowThreshold, overstockThreshold);
+                const statusClass = getStatusClass(stockStatus);
+                const statusText = getStatusText(stockStatus);
+                
+                const row = document.createElement('tr');
+                row.className = 'border-t border-neutral-200 hover:bg-neutral-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-5 py-3">${item.id}</td>
+                    <td class="px-5 py-3">${item.name}</td>
+                    <td class="px-5 py-3">${getCategoryName(item.category)}</td>
+                    <td class="px-5 py-3">${item.quantity}</td>
+                    <td class="px-5 py-3">${item.cost.toFixed(2)}</td>
+                    <td class="px-5 py-3">${(item.quantity * item.cost).toFixed(2)}</td>
+                    <td class="px-5 py-3">${item.minStock}</td>
+                    <td class="px-5 py-3">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-5 py-3">${item.lastStockDate}</td>
+                `;
+                inventoryTableBody.appendChild(row);
+            });
+            
+            // 更新分页控件
+            updatePagination();
+            
+            // 更新显示信息
+            showingRange.textContent = dataToShow.length > 0 ? 
+                `${startIndex + 1}-${endIndex}` : '0-0';
+            totalItems.textContent = dataToShow.length;
+            
+            // 更新分页按钮状态
+            prevPage.disabled = currentPage <= 1;
+            nextPage.disabled = currentPage >= totalPages || totalPages === 0;
+        }
+        
+        // 更新分页控件
+        function updatePagination() {
+            pagination.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `px-3 py-1 rounded-md text-sm btn-hover ${i === currentPage ? 'bg-primary text-white' : 'border border-neutral-300 text-neutral-700'}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', function() {
+                    currentPage = i;
+                    updateInventoryTable();
+                });
+                pagination.appendChild(pageBtn);
+            }
+        }
+        
+        // 更新统计数据
+        function updateStatistics() {
+            // 总商品种类
+            totalProductsEl.textContent = filteredData.length;
+            
+            // 总库存数量
+            const totalQuantity = filteredData.reduce((sum, item) => sum + item.quantity, 0);
+            totalQuantityEl.textContent = totalQuantity;
+            
+            // 库存总价值
+            const totalValue = filteredData.reduce((sum, item) => sum + (item.quantity * item.cost), 0);
+            totalValueEl.textContent = totalValue.toFixed(2);
+            
+            // 低库存商品数
+            const lowThreshold = parseInt(document.getElementById('lowStockThreshold').value) || 10;
+            const overstockThreshold = parseInt(document.getElementById('overstockThreshold').value) || 100;
+            
+            const lowStockItems = filteredData.filter(item => 
+                getStockStatus(item.quantity, item.minStock, lowThreshold, overstockThreshold) === 'low' ||
+                getStockStatus(item.quantity, item.minStock, lowThreshold, overstockThreshold) === 'out'
+            ).length;
+            
+            lowStockItemsEl.textContent = lowStockItems;
+        }
+        
+        // 验证筛选表单
+        function validateFilterForm() {
+            let isValid = true;
+            clearFilterErrors();
+            
+            const analysisDate = document.getElementById('analysisDate');
+            if (!analysisDate.value) {
+                showFilterError(analysisDate, 'analysisDateError', '请选择分析日期');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 验证预警设置表单
+        function validateAlertSettings() {
+            let isValid = true;
+            clearAlertSettingsErrors();
+            
+            const lowThreshold = document.getElementById('lowStockThreshold');
+            if (!lowThreshold.value || lowThreshold.value <= 0) {
+                showAlertSettingsError(lowThreshold, 'lowStockThresholdError', '请输入有效的低库存阈值');
+                isValid = false;
+            }
+            
+            const overstockThreshold = document.getElementById('overstockThreshold');
+            if (!overstockThreshold.value || overstockThreshold.value <= 0) {
+                showAlertSettingsError(overstockThreshold, 'overstockThresholdError', '请输入有效的库存积压阈值');
+                isValid = false;
+            }
+            
+            // 验证低库存阈值小于库存积压阈值
+            if (isValid && parseInt(lowThreshold.value) >= parseInt(overstockThreshold.value)) {
+                showAlertSettingsError(overstockThreshold, 'overstockThresholdError', '库存积压阈值必须大于低库存阈值');
+                isValid = false;
+            }
+            
+            const alertFrequency = document.getElementById('alertFrequency');
+            if (!alertFrequency.value) {
+                showAlertSettingsError(alertFrequency, 'alertFrequencyError', '请选择预警通知频率');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+        
+        // 清除筛选表单错误
+        function clearFilterErrors() {
+            const analysisDate = document.getElementById('analysisDate');
+            const errorEl = document.getElementById('analysisDateError');
+            
+            analysisDate.classList.remove('input-error');
+            errorEl.classList.add('hidden');
+            errorEl.textContent = '';
+        }
+        
+        // 清除预警设置表单错误
+        function clearAlertSettingsErrors() {
+            const elements = [
+                { id: 'lowStockThreshold', errorId: 'lowStockThresholdError' },
+                { id: 'overstockThreshold', errorId: 'overstockThresholdError' },
+                { id: 'alertFrequency', errorId: 'alertFrequencyError' }
+            ];
+            
+            elements.forEach(({ id, errorId }) => {
+                const el = document.getElementById(id);
+                const errorEl = document.getElementById(errorId);
+                
+                el.classList.remove('input-error');
+                errorEl.classList.add('hidden');
+                errorEl.textContent = '';
+            });
+        }
+        
+        // 显示筛选表单错误
+        function showFilterError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示预警设置表单错误
+        function showAlertSettingsError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 辅助函数：获取库存状态
+        function getStockStatus(quantity, minStock, lowThreshold, overstockThreshold) {
+            if (quantity <= 0) {
+                return 'out';
+            } else if (quantity < minStock || quantity <= lowThreshold) {
+                return 'low';
+            } else if (quantity > overstockThreshold) {
+                return 'overstock';
+            } else {
+                return 'normal';
+            }
+        }
+        
+        // 辅助函数：获取状态样式类
+        function getStatusClass(status) {
+            const classes = {
+                normal: 'bg-success/10 text-success',
+                low: 'bg-warning/10 text-warning',
+                out: 'bg-danger/10 text-danger',
+                overstock: 'bg-primary/10 text-primary'
+            };
+            return classes[status] || '';
+        }
+        
+        // 辅助函数：获取状态文本
+        function getStatusText(status) {
+            const texts = {
+                normal: '正常库存',
+                low: '库存偏低',
+                out: '缺货',
+                overstock: '库存积压'
+            };
+            return texts[status] || '';
+        }
+        
+        // 辅助函数：获取类别名称
+        function getCategoryName(category) {
+            const names = {
+                electronics: '电子产品',
+                clothing: '服装鞋帽',
+                food: '食品饮料',
+                home: '家居用品',
+                others: '其他类别'
+            };
+            return names[category] || category;
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    

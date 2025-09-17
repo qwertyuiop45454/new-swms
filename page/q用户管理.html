@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        info: '#86909C',
+                        light: '#F2F3F5',
+                        dark: '#1D2129'
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .card {
+                @apply bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden;
+            }
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            }
+            .btn-primary {
+                @apply bg-primary text-white hover:bg-primary/90 focus:ring-primary/50;
+            }
+            .btn-success {
+                @apply bg-success text-white hover:bg-success/90 focus:ring-success/50;
+            }
+            .btn-warning {
+                @apply bg-warning text-white hover:bg-warning/90 focus:ring-warning/50;
+            }
+            .btn-danger {
+                @apply bg-danger text-white hover:bg-danger/90 focus:ring-danger/50;
+            }
+            .btn-outline {
+                @apply border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-200;
+            }
+            .form-input {
+                @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all;
+            }
+            .form-error {
+                @apply border-danger focus:ring-danger/50 focus:border-danger;
+            }
+            .table-row-hover {
+                @apply hover:bg-gray-50 transition-colors;
+            }
+            .badge {
+                @apply px-2 py-1 text-xs rounded-full font-medium;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-inter text-dark">
+    <div class="max-w-7xl mx-auto p-4 md:p-6">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-dark">用户管理</h1>
+            <p class="text-gray-500 mt-1">管理系统用户账号、权限及相关信息</p>
+        </div>
+
+        <!-- 操作按钮区 -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div class="relative w-full sm:w-64">
+                <input type="text" id="searchUser" placeholder="搜索用户..." 
+                       class="form-input pl-10">
+                <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            </div>
+            <div class="flex gap-3">
+                <button id="addUserBtn" class="btn btn-primary flex items-center gap-2">
+                    <i class="fa fa-plus"></i>
+                    <span>新增用户</span>
+                </button>
+                <button id="batchDeleteBtn" class="btn btn-danger flex items-center gap-2" disabled>
+                    <i class="fa fa-trash"></i>
+                    <span>批量删除</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 用户列表 -->
+        <div class="card mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="px-4 py-3 text-left w-12">
+                                <input type="checkbox" id="selectAll" class="w-4 h-4 text-primary rounded border-gray-300">
+                            </th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">用户名</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">邮箱</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">角色</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">状态</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">创建时间</th>
+                            <th class="px-4 py-3 text-left font-semibold text-gray-700">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- 用户数据将通过JavaScript动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    显示 <span id="showingRange">1-5</span> 条，共 <span id="totalUsers">0</span> 条
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <div id="pagination" class="flex gap-1">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                    <button id="nextPage" class="btn btn-outline px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑用户模态框 -->
+    <div id="userModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-semibold">新增用户</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="userForm" class="p-5 space-y-4">
+                <input type="hidden" id="userId">
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
+                        用户名 <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="username" class="form-input" placeholder="请输入用户名">
+                    <p id="usernameError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                        邮箱 <span class="text-danger">*</span>
+                    </label>
+                    <input type="email" id="email" class="form-input" placeholder="请输入邮箱地址">
+                    <p id="emailError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div id="passwordField">
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
+                        密码 <span class="text-danger">*</span>
+                    </label>
+                    <input type="password" id="password" class="form-input" placeholder="请输入密码">
+                    <p id="passwordError" class="mt-1 text-sm text-danger hidden"></p>
+                    <p class="mt-1 text-xs text-gray-500">密码长度至少8位，包含字母和数字</p>
+                </div>
+                
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">
+                        角色 <span class="text-danger">*</span>
+                    </label>
+                    <select id="role" class="form-input">
+                        <option value="">请选择角色</option>
+                        <option value="admin">管理员</option>
+                        <option value="editor">编辑</option>
+                        <option value="viewer">查看者</option>
+                        <option value="operator">操作员</option>
+                    </select>
+                    <p id="roleError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                        状态 <span class="text-danger">*</span>
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="active" checked class="w-4 h-4 text-primary">
+                            <span>启用</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="status" value="inactive" class="w-4 h-4 text-primary">
+                            <span>禁用</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div>
+                    <label for="fullname" class="block text-sm font-medium text-gray-700 mb-1">
+                        姓名
+                    </label>
+                    <input type="text" id="fullname" class="form-input" placeholder="请输入姓名">
+                </div>
+                
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" id="cancelBtn" class="btn btn-outline">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
+            <h3 class="text-lg font-semibold mb-3">确认删除</h3>
+            <p class="text-gray-600 mb-5">您确定要删除选中的用户吗？此操作不可恢复。</p>
+            <input type="hidden" id="deleteUserId">
+            <div class="flex justify-end gap-3">
+                <button id="cancelDeleteBtn" class="btn btn-outline">取消</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // 模拟用户数据
+        let users = [
+            { id: 1, username: 'admin', email: 'admin@example.com', role: 'admin', status: 'active', fullname: '系统管理员', createdAt: '2023-01-15 09:30:00' },
+            { id: 2, username: 'editor1', email: 'editor1@example.com', role: 'editor', status: 'active', fullname: '编辑人员', createdAt: '2023-02-20 14:20:00' },
+            { id: 3, username: 'viewer1', email: 'viewer1@example.com', role: 'viewer', status: 'inactive', fullname: '查看人员', createdAt: '2023-03-05 10:15:00' },
+            { id: 4, username: 'operator1', email: 'operator1@example.com', role: 'operator', status: 'active', fullname: '操作员A', createdAt: '2023-03-18 16:40:00' },
+            { id: 5, username: 'operator2', email: 'operator2@example.com', role: 'operator', status: 'active', fullname: '操作员B', createdAt: '2023-04-02 11:50:00' },
+            { id: 6, username: 'editor2', email: 'editor2@example.com', role: 'editor', status: 'active', fullname: '编辑人员B', createdAt: '2023-04-15 09:10:00' },
+            { id: 7, username: 'viewer2', email: 'viewer2@example.com', role: 'viewer', status: 'inactive', fullname: '查看人员B', createdAt: '2023-05-22 15:30:00' }
+        ];
+
+        // 分页配置
+        const pageSize = 5;
+        let currentPage = 1;
+        let filteredUsers = [...users];
+
+        // DOM元素
+        const userTableBody = document.getElementById('userTableBody');
+        const addUserBtn = document.getElementById('addUserBtn');
+        const userModal = document.getElementById('userModal');
+        const closeModal = document.getElementById('closeModal');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const userForm = document.getElementById('userForm');
+        const modalTitle = document.getElementById('modalTitle');
+        const userIdInput = document.getElementById('userId');
+        const passwordField = document.getElementById('passwordField');
+        const confirmModal = document.getElementById('confirmModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteUserIdInput = document.getElementById('deleteUserId');
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+        const searchInput = document.getElementById('searchUser');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const paginationContainer = document.getElementById('pagination');
+        const showingRangeText = document.getElementById('showingRange');
+        const totalUsersText = document.getElementById('totalUsers');
+        const toast = document.getElementById('toast');
+
+        // 角色映射
+        const roleMap = {
+            'admin': '管理员',
+            'editor': '编辑',
+            'viewer': '查看者',
+            'operator': '操作员'
+        };
+
+        // 状态样式映射
+        const statusMap = {
+            'active': { text: '启用', class: 'bg-success/10 text-success' },
+            'inactive': { text: '禁用', class: 'bg-gray-100 text-gray-500' }
+        };
+
+        // 初始化页面
+        function init() {
+            renderUserTable();
+            setupEventListeners();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 打开新增用户模态框
+            addUserBtn.addEventListener('click', () => {
+                openUserModal();
+            });
+
+            // 关闭模态框
+            closeModal.addEventListener('click', closeUserModal);
+            cancelBtn.addEventListener('click', closeUserModal);
+
+            // 提交用户表单
+            userForm.addEventListener('submit', handleFormSubmit);
+
+            // 确认删除相关
+            cancelDeleteBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+
+            confirmDeleteBtn.addEventListener('click', () => {
+                const userId = parseInt(deleteUserIdInput.value);
+                deleteUser(userId);
+                confirmModal.classList.add('hidden');
+            });
+
+            // 全选 checkbox
+            selectAllCheckbox.addEventListener('change', handleSelectAll);
+
+            // 搜索用户
+            searchInput.addEventListener('input', handleSearch);
+
+            // 分页按钮
+            prevPageBtn.addEventListener('click', goToPrevPage);
+            nextPageBtn.addEventListener('click', goToNextPage);
+        }
+
+        // 渲染用户表格
+        function renderUserTable() {
+            // 计算分页
+            const totalPages = Math.ceil(filteredUsers.length / pageSize);
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, filteredUsers.length);
+            const currentUsers = filteredUsers.slice(startIndex, endIndex);
+
+            // 更新显示范围和总数
+            showingRangeText.textContent = filteredUsers.length > 0 ? `${startIndex + 1}-${endIndex}` : '0-0';
+            totalUsersText.textContent = filteredUsers.length;
+
+            // 清空表格
+            userTableBody.innerHTML = '';
+
+            // 没有数据时显示空状态
+            if (currentUsers.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="7" class="px-4 py-10 text-center text-gray-500">
+                        <i class="fa fa-user-o text-3xl mb-2 block"></i>
+                        没有找到匹配的用户
+                    </td>
+                `;
+                userTableBody.appendChild(emptyRow);
+            } else {
+                // 渲染用户数据
+                currentUsers.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b border-gray-100 table-row-hover';
+                    row.innerHTML = `
+                        <td class="px-4 py-3">
+                            <input type="checkbox" class="user-checkbox w-4 h-4 text-primary rounded border-gray-300" 
+                                   data-id="${user.id}">
+                        </td>
+                        <td class="px-4 py-3">${user.username}</td>
+                        <td class="px-4 py-3">${user.email}</td>
+                        <td class="px-4 py-3">${roleMap[user.role]}</td>
+                        <td class="px-4 py-3">
+                            <span class="badge ${statusMap[user.status].class}">${statusMap[user.status].text}</span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600">${user.createdAt}</td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-2">
+                                <button class="text-primary hover:text-primary/80" 
+                                        onclick="editUser(${user.id})">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <button class="text-danger hover:text-danger/80" 
+                                        onclick="openDeleteConfirm(${user.id})">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                                <button class="text-gray-500 hover:text-gray-700"
+                                        onclick="toggleUserStatus(${user.id}, '${user.status}')">
+                                    <i class="fa ${user.status === 'active' ? 'fa-lock' : 'fa-unlock'}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    userTableBody.appendChild(row);
+                });
+
+                // 为用户行的checkbox添加事件监听
+                document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateBatchDeleteButton);
+                });
+            }
+
+            // 渲染分页
+            renderPagination(totalPages);
+
+            // 更新分页按钮状态
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        }
+
+        // 渲染分页
+        function renderPagination(totalPages) {
+            paginationContainer.innerHTML = '';
+            
+            // 最多显示5个页码
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            
+            // 调整显示范围
+            if (endPage - startPage < 4 && totalPages > 5) {
+                startPage = Math.max(1, endPage - 4);
+            }
+            
+            // 添加第一页按钮（如果当前范围不包含第一页）
+            if (startPage > 1) {
+                addPageButton(1);
+                if (startPage > 2) {
+                    addEllipsis();
+                }
+            }
+            
+            // 添加中间页码
+            for (let i = startPage; i <= endPage; i++) {
+                addPageButton(i);
+            }
+            
+            // 添加最后一页按钮（如果当前范围不包含最后一页）
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    addEllipsis();
+                }
+                addPageButton(totalPages);
+            }
+        }
+
+        // 添加页码按钮
+        function addPageButton(pageNum) {
+            const button = document.createElement('button');
+            button.className = `btn btn-outline px-3 py-1 ${currentPage === pageNum ? 'bg-primary text-white border-primary' : ''}`;
+            button.textContent = pageNum;
+            button.addEventListener('click', () => {
+                currentPage = pageNum;
+                renderUserTable();
+            });
+            paginationContainer.appendChild(button);
+        }
+
+        // 添加省略号
+        function addEllipsis() {
+            const ellipsis = document.createElement('span');
+            ellipsis.className = 'flex items-center px-2 text-gray-500';
+            ellipsis.textContent = '...';
+            paginationContainer.appendChild(ellipsis);
+        }
+
+        // 上一页
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderUserTable();
+            }
+        }
+
+        // 下一页
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredUsers.length / pageSize);
+            if (currentPage < totalPages) {
+                currentPage++;
+                renderUserTable();
+            }
+        }
+
+        // 打开用户模态框
+        function openUserModal(userId = null) {
+            // 重置表单和错误信息
+            userForm.reset();
+            clearFormErrors();
+            userIdInput.value = '';
+            
+            // 显示密码字段（新增用户时）
+            passwordField.classList.remove('hidden');
+            
+            if (userId) {
+                // 编辑用户
+                modalTitle.textContent = '编辑用户';
+                const user = users.find(u => u.id === userId);
+                if (user) {
+                    userIdInput.value = user.id;
+                    document.getElementById('username').value = user.username;
+                    document.getElementById('email').value = user.email;
+                    document.getElementById('role').value = user.role;
+                    document.getElementById('fullname').value = user.fullname || '';
+                    
+                    // 设置状态
+                    document.querySelector(`input[name="status"][value="${user.status}"]`).checked = true;
+                }
+            } else {
+                // 新增用户
+                modalTitle.textContent = '新增用户';
+            }
+            
+            userModal.classList.remove('hidden');
+        }
+
+        // 关闭用户模态框
+        function closeUserModal() {
+            userModal.classList.add('hidden');
+        }
+
+        // 处理表单提交
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            if (validateForm()) {
+                const userId = userIdInput.value;
+                const userData = {
+                    username: document.getElementById('username').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    role: document.getElementById('role').value,
+                    status: document.querySelector('input[name="status"]:checked').value,
+                    fullname: document.getElementById('fullname').value.trim() || ''
+                };
+                
+                // 如果是新增用户，添加密码和创建时间
+                if (!userId) {
+                    userData.password = document.getElementById('password').value;
+                    userData.createdAt = new Date().toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    }).replace(/\//g, '-');
+                    userData.id = Date.now(); // 使用时间戳作为ID
+                    users.push(userData);
+                    showToast('用户添加成功', 'success');
+                } else {
+                    // 编辑用户
+                    const index = users.findIndex(u => u.id === parseInt(userId));
+                    if (index !== -1) {
+                        // 保留原始密码和创建时间
+                        userData.password = users[index].password;
+                        userData.createdAt = users[index].createdAt;
+                        users[index] = { ...userData, id: parseInt(userId) };
+                        showToast('用户更新成功', 'success');
+                    }
+                }
+                
+                // 刷新表格并关闭模态框
+                filterUsers();
+                renderUserTable();
+                closeUserModal();
+            }
+        }
+
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            clearFormErrors();
+            
+            // 验证用户名
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                showError('username', '请输入用户名');
+                isValid = false;
+            } else if (username.length < 3 || username.length > 20) {
+                showError('username', '用户名长度应在3-20个字符之间');
+                isValid = false;
+            } else if (userIdInput.value === '' && users.some(u => u.username === username)) {
+                showError('username', '该用户名已被使用');
+                isValid = false;
+            }
+            
+            // 验证邮箱
+            const email = document.getElementById('email').value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email) {
+                showError('email', '请输入邮箱地址');
+                isValid = false;
+            } else if (!emailRegex.test(email)) {
+                showError('email', '请输入有效的邮箱地址');
+                isValid = false;
+            } else if (userIdInput.value === '' && users.some(u => u.email === email)) {
+                showError('email', '该邮箱已被使用');
+                isValid = false;
+            }
+            
+            // 验证密码（仅新增用户时）
+            if (!userIdInput.value) {
+                const password = document.getElementById('password').value;
+                const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+                if (!password) {
+                    showError('password', '请输入密码');
+                    isValid = false;
+                } else if (!passwordRegex.test(password)) {
+                    showError('password', '密码长度至少8位，且必须包含字母和数字');
+                    isValid = false;
+                }
+            }
+            
+            // 验证角色
+            const role = document.getElementById('role').value;
+            if (!role) {
+                showError('role', '请选择角色');
+                isValid = false;
+            }
+            
+            return isValid;
+        }
+
+        // 显示错误信息
+        function showError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorElement = document.getElementById(`${fieldId}Error`);
+            
+            field.classList.add('form-error');
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
+        }
+
+        // 清除表单错误
+        function clearFormErrors() {
+            ['username', 'email', 'password', 'role'].forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                const errorElement = document.getElementById(`${fieldId}Error`);
+                
+                field.classList.remove('form-error');
+                if (errorElement) {
+                    errorElement.classList.add('hidden');
+                    errorElement.textContent = '';
+                }
+            });
+        }
+
+        // 打开删除确认
+        function openDeleteConfirm(userId) {
+            deleteUserIdInput.value = userId;
+            confirmModal.classList.remove('hidden');
+        }
+
+        // 删除用户
+        function deleteUser(userId) {
+            const initialLength = users.length;
+            users = users.filter(user => user.id !== userId);
+            
+            if (users.length < initialLength) {
+                showToast('用户已删除', 'success');
+                filterUsers();
+                renderUserTable();
+            }
+        }
+
+        // 编辑用户
+        function editUser(userId) {
+            // 隐藏密码字段（编辑用户时）
+            passwordField.classList.add('hidden');
+            openUserModal(userId);
+        }
+
+        // 切换用户状态
+        function toggleUserStatus(userId, currentStatus) {
+            const index = users.findIndex(user => user.id === userId);
+            if (index !== -1) {
+                const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+                users[index].status = newStatus;
+                showToast(`用户已${newStatus === 'active' ? '启用' : '禁用'}`, 'success');
+                renderUserTable();
+            }
+        }
+
+        // 处理全选
+        function handleSelectAll() {
+            const isChecked = selectAllCheckbox.checked;
+            document.querySelectorAll('.user-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateBatchDeleteButton();
+        }
+
+        // 更新批量删除按钮状态
+        function updateBatchDeleteButton() {
+            const checkedCount = document.querySelectorAll('.user-checkbox:checked').length;
+            batchDeleteBtn.disabled = checkedCount === 0;
+            
+            // 更新全选框状态
+            const totalCheckboxes = document.querySelectorAll('.user-checkbox').length;
+            selectAllCheckbox.checked = totalCheckboxes > 0 && checkedCount === totalCheckboxes;
+        }
+
+        // 处理搜索
+        function handleSearch() {
+            filterUsers();
+            currentPage = 1; // 重置到第一页
+            renderUserTable();
+        }
+
+        // 过滤用户
+        function filterUsers() {
+            const searchTerm = searchInput.value.trim().toLowerCase();
+            if (searchTerm) {
+                filteredUsers = users.filter(user => 
+                    user.username.toLowerCase().includes(searchTerm) || 
+                    user.email.toLowerCase().includes(searchTerm) ||
+                    user.fullname.toLowerCase().includes(searchTerm) ||
+                    roleMap[user.role].toLowerCase().includes(searchTerm)
+                );
+            } else {
+                filteredUsers = [...users];
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 暴露函数到全局，供HTML中直接调用
+        window.editUser = editUser;
+        window.openDeleteConfirm = openDeleteConfirm;
+        window.toggleUserStatus = toggleUserStatus;
+    </script>
+</body>
+</html>
+    

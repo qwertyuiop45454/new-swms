@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>首页二</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="../lib/layui-v2.6.3/css/layui.css" media="all">
+    <link rel="stylesheet" href="../lib/font-awesome-4.7.0/css/font-awesome.min.css" media="all">
+    <link rel="stylesheet" href="../css/public.css" media="all">
+    <style>
+        .layui-card {border:1px solid #f2f2f2;border-radius:5px;}
+        .icon {margin-right:10px;color:#1aa094;}
+        .icon-cray {color:#ffb800!important;}
+        .icon-blue {color:#1e9fff!important;}
+        .icon-tip {color:#ff5722!important;}
+        .layuimini-qiuck-module {text-align:center;margin-top: 10px}
+        .layuimini-qiuck-module a i {display:inline-block;width:100%;height:60px;line-height:60px;text-align:center;border-radius:2px;font-size:30px;background-color:#F8F8F8;color:#333;transition:all .3s;-webkit-transition:all .3s;}
+        .layuimini-qiuck-module a cite {position:relative;top:2px;display:block;color:#666;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;font-size:14px;}
+        .welcome-module {width:100%;height:210px;}
+        .panel {background-color:#fff;border:1px solid transparent;border-radius:3px;-webkit-box-shadow:0 1px 1px rgba(0,0,0,.05);box-shadow:0 1px 1px rgba(0,0,0,.05)}
+        .panel-body {padding:10px}
+        .panel-title {margin-top:0;margin-bottom:0;font-size:12px;color:inherit}
+        .label {display:inline;padding:.2em .6em .3em;font-size:75%;font-weight:700;line-height:1;color:#fff;text-align:center;white-space:nowrap;vertical-align:baseline;border-radius:.25em;margin-top: .3em;}
+        .layui-red {color:red}
+        .main_btn > p {height:40px;}
+        .layui-bg-number {background-color:#F8F8F8;}
+        .layuimini-notice:hover {background:#f6f6f6;}
+        .layuimini-notice {padding:7px 16px;clear:both;font-size:12px !important;cursor:pointer;position:relative;transition:background 0.2s ease-in-out;}
+        .layuimini-notice-title,.layuimini-notice-label {
+            padding-right: 70px !important;text-overflow:ellipsis!important;overflow:hidden!important;white-space:nowrap!important;}
+        .layuimini-notice-title {line-height:28px;font-size:14px;}
+        .layuimini-notice-extra {position:absolute;top:50%;margin-top:-8px;right:16px;display:inline-block;height:16px;color:#999;}
+    </style>
+</head>
+<body>
+<div class="layuimini-container">
+    <div class="layuimini-main">
+        <div class="layui-row layui-col-space15">
+            <div class="layui-col-md8">
+                <div class="layui-row layui-col-space15">
+                    <div class="layui-col-md6">
+                        <div class="layui-card">
+                            <div class="layui-card-header"><i class="fa fa-warning icon"></i>数据统计</div>
+                            <div class="layui-card-body">
+                                <div class="welcome-module">
+                                    <div class="layui-row layui-col-space10">
+                                        <div class="layui-col-xs6">
+                                            <div class="panel layui-bg-number">
+                                                <div class="panel-body">
+                                                    <div class="panel-title">
+                                                        <span class="label pull-right layui-bg-blue">实时</span>
+                                                        <h5>物料统计</h5>
+                                                    </div>
+                                                    <div class="panel-content">
+                                                        <h1 class="no-margins">1234</h1>
+                                                        <small>当前分类总记录数</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="layui-col-xs6">
+                                            <div class="panel layui-bg-number">
+                                                <div class="panel-body">
+                                                    <div class="panel-title">
+                                                        <span class="label pull-right layui-bg-cyan">实时</span>
+                                                        <h5>库存统计</h5>
+                                                    </div>
+                                                    <div class="panel-content">
+                                                        <h1 class="no-margins">1234</h1>
+                                                        <small>当前分类总记录数</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="layui-col-xs6">
+                                            <div class="panel layui-bg-number">
+                                                <div class="panel-body">
+                                                    <div class="panel-title">
+                                                        <span class="label pull-right layui-bg-orange">实时</span>
+                                                        <h5>浏览统计</h5>
+                                                    </div>
+                                                    <div class="panel-content">
+                                                        <h1 class="no-margins">1234</h1>
+                                                        <small>当前分类总记录数</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="layui-col-xs6">
+                                            <div class="panel layui-bg-number">
+                                                <div class="panel-body">
+                                                    <div class="panel-title">
+                                                        <span class="label pull-right layui-bg-green">实时</span>
+                                                        <h5>订单统计</h5>
+                                                    </div>
+                                                    <div class="panel-content">
+                                                        <h1 class="no-margins">1234</h1>
+                                                        <small>当前分类总记录数</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="layui-col-md6">
+                        <div class="layui-card">
+                            <div class="layui-card-header"><i class="fa fa-credit-card icon icon-blue"></i>快捷入口</div>
+                            <div class="layui-card-body">
+                                <div class="welcome-module">
+                                    <div class="layui-row layui-col-space10 layuimini-qiuck">
+                                        <div class="layui-col-xs3 layuimini-qiuck-module">
+                                            <a href="javascript:;" layuimini-content-href="page/q入库预约.html" data-title="菜单管理" data-icon="fa fa-window-maximize">
+                                                <i class="fa fa-window-maximize"></i>
+                                                <cite>入库预约</cite>
+                                            </a>
+                                        </div>
+                                        <div class="layui-col-xs3 layuimini-qiuck-module">
+                                            <a href="javascript:;" layuimini-content-href="page/q用户管理.html" data-title="系统设置" data-icon="fa fa-gears">
+                                                <i class="fa fa-gears"></i>
+                                                <cite>用户管理</cite>
+                                            </a>
+                                        </div>
+                                        <div class="layui-col-xs3 layuimini-qiuck-module">
+                                            <a href="javascript:;" layuimini-content-href="page/q数据导出.html" data-title="表格示例" data-icon="fa fa-file-text">
+                                                <i class="fa fa-file-text"></i>
+                                                <cite>数据导出</cite>
+                                            </a>
+                                        </div>
+                                        <div class="layui-col-xs3 layuimini-qiuck-module">
+                                            <a href="javascript:;" layuimini-content-href="page/q发货确认.html" data-title="图标列表" data-icon="fa fa-dot-circle-o">
+                                                <i class="fa fa-dot-circle-o"></i>
+                                                <cite>发货确认</cite>
+                                            </a>
+                                        </div>
+                                        <div class="layui-col-xs3 layuimini-qiuck-module">
+                                            <a href="javascript:;" layuimini-content-href="page/q出入库统计.html" data-title="表单示例" data-icon="fa fa-calendar">
+                                                <i class="fa fa-calendar"></i>
+                                                <cite>出入库统计</cite>
+                                            </a>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="layui-col-md12">
+                        <div class="layui-card">
+                            <div class="layui-card-header"><i class="fa fa-line-chart icon"></i>报表统计</div>
+                            <div class="layui-card-body">
+                                <div id="echarts-records" style="width: 100%;min-height:500px"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-col-md4">
+
+                <div class="layui-card">
+                    <div class="layui-card-header"><i class="fa fa-bullhorn icon icon-tip"></i>系统公告</div>
+                    <div class="layui-card-body layui-text">
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">系统升级核心内容</div>
+                            <div class="layuimini-notice-extra">2025-09-09 11:17</div>
+                            <div class="layuimini-notice-content layui-hide">
+                               1、新增物料分类体系：按照 “原料 - 半成品 - 成品 - 辅助物料” 四大类细化分级，新增 “环保属性”“安全等级”“供应商资质关联” 等必选字段，确保物料全生命周期可追溯。
+                             <br>  2、优化信息录入校验：系统将自动校验物料编码（执行公司新编码规则：XX-XX-XXXX，前两位为部门代码，中间两位为分类代码，后四位为流水号）、规格型号、单位等关键信息的规范性，未通过校验将无法提交。
+                             <br>  3、新增批量操作功能：支持 “批量导入物料信息”“批量更新库存状态”“批量导出物料明细”，导入模板可在系统 “帮助中心 - 下载专区” 获取。
+                             <br>  4、数据协同升级：与采购系统、仓储系统、生产系统实现实时数据同步，物料入库、出库、领用信息将实时更新至系统，无需手动二次录入
+                            </div>
+                        </div>
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">物料信息规范更新要求</div>
+                            <div class="layuimini-notice-extra">2025-09-09 10:10</div>
+                            <div class="layuimini-notice-content layui-hide">
+                              1、 历史物料信息补录：请各部门于2024 年 X 月 X 日 24:00 前，登录系统完成本部门管理的历史物料（2024 年 X 月 X 日前入库）的信息补录，重点完善 “供应商名称”“采购批次”“有效期” 等缺失字段；逾期未补录的物料将标记为 “待完善”，暂停出库权限。
+                        <br>     2、新物料录入标准：
+                        <br>     物料名称：需使用全称（如 “食品级 304 不锈钢板材” 而非 “不锈钢板”），避免简称或模糊表述；
+                        <br>      规格型号：按 “尺寸 / 参数 / 标准” 格式填写（如 “1.2m×2.4m×1.5mm GB/T 3280-2015”）；
+                        <br>        附件要求：新增物料需上传 “供应商提供的物料质检报告”“合格证” 扫描件（格式支持 PDF、JPG，单个文件不超过 50MB）。
+                        <br>      3、 信息更新责任：物料信息发生变更（如供应商变更、规格调整、有效期更新等）时，由物料所属部门指定专人在24 小时内登录系统修改，确保信息真实有效。
+                            </div>
+                        </div>
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">A库新增物料清单</div>
+                            <div class="layuimini-notice-extra">2025-07-05 14:28</div>
+                            <div class="layuimini-notice-content layui-hide">
+                                界面足够简洁清爽。<br>
+                                一个接口几行代码而已直接初始化整个框架，无需复杂操作。<br>
+                                支持多tab，可以打开多窗口。<br>
+                                支持无限级菜单和对font-awesome图标库的完美支持。<br>
+                                失效以及报错菜单无法直接打开，并给出弹出层提示完美的线上用户体验。<br>
+                                url地址hash定位，可以清楚看到当前tab的地址信息。<br>
+                                刷新页面会保留当前的窗口，并且会定位当前窗口对应左侧菜单栏。<br>
+                                移动端的友好支持。<br>
+                            </div>
+                        </div>
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">新增物料-调整物料-查询物料系统升级</div>
+                            <div class="layuimini-notice-extra">2025-07-04 11:02</div>
+                            <div class="layuimini-notice-content layui-hide">
+                                界面足够简洁清爽。<br>
+                                一个接口几行代码而已直接初始化整个框架，无需复杂操作。<br>
+                                支持多tab，可以打开多窗口。<br>
+                                支持无限级菜单和对font-awesome图标库的完美支持。<br>
+                                失效以及报错菜单无法直接打开，并给出弹出层提示完美的线上用户体验。<br>
+                                url地址hash定位，可以清楚看到当前tab的地址信息。<br>
+                                刷新页面会保留当前的窗口，并且会定位当前窗口对应左侧菜单栏。<br>
+                                移动端的友好支持。<br>
+                            </div>
+                        </div>
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">D库仓品版型区域面积扩增</div>
+                            <div class="layuimini-notice-extra">2025-06-17 11:55</div>
+                            <div class="layuimini-notice-content layui-hide">
+                                界面足够简洁清爽。<br>
+                                一个接口几行代码而已直接初始化整个框架，无需复杂操作。<br>
+                                支持多tab，可以打开多窗口。<br>
+                                支持无限级菜单和对font-awesome图标库的完美支持。<br>
+                                失效以及报错菜单无法直接打开，并给出弹出层提示完美的线上用户体验。<br>
+                                url地址hash定位，可以清楚看到当前tab的地址信息。<br>
+                                刷新页面会保留当前的窗口，并且会定位当前窗口对应左侧菜单栏。<br>
+                                移动端的友好支持。<br>
+                            </div>
+                        </div>
+                        <div class="layuimini-notice">
+                            <div class="layuimini-notice-title">建立多级仓储管理交叉网</div>
+                            <div class="layuimini-notice-extra">2025-06-13 14:53</div>
+                            <div class="layuimini-notice-content layui-hide">
+                                界面足够简洁清爽。<br>
+                                一个接口几行代码而已直接初始化整个框架，无需复杂操作。<br>
+                                支持多tab，可以打开多窗口。<br>
+                                支持无限级菜单和对font-awesome图标库的完美支持。<br>
+                                失效以及报错菜单无法直接打开，并给出弹出层提示完美的线上用户体验。<br>
+                                url地址hash定位，可以清楚看到当前tab的地址信息。<br>
+                                刷新页面会保留当前的窗口，并且会定位当前窗口对应左侧菜单栏。<br>
+                                移动端的友好支持。<br>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="layui-card">
+                    <div class="layui-card-header"><i class="fa fa-fire icon"></i>版本信息</div>
+                    <div class="layui-card-body layui-text">
+                        <table class="layui-table">
+                            <colgroup>
+                                <col width="100">
+                                <col>
+                            </colgroup>
+                            <tbody>
+                            <tr>
+                                <td>版本名称</td>
+                                <td>
+                                    仓储管理系统
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>当前版本</td>
+                                <td>v2.0.0</td>
+                            </tr>
+                            <tr>
+                                <td>主要特色</td>
+                                <td>简洁 / 响应式 / 功能性良好/ </td>
+                            </tr>
+                            <tr>
+                                <td>演示地址</td>
+                                <td>
+                                    windows版-v2：<a href="http://layuimini.99php.cn/iframe/v2/index.html" target="_blank">点击查看</a><br>
+                                    Linux版：<a href="http://layuimini.99php.cn/onepage/v2/index.html" target="_blank">点击查看</a><br>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>下载地址</td>
+                                <td>
+                                    windows版-v2：<a href="https://github.com/zhongshaofa/layuimini/tree/v2" target="_blank">github</a> / <a href="https://gitee.com/zhongshaofa/layuimini/tree/v2" target="_blank">gitee</a><br>
+                                    Linux版：<a href="https://github.com/zhongshaofa/layuimini/tree/v2-onepage" target="_blank">github</a> / <a href="https://gitee.com/zhongshaofa/layuimini/tree/v2-onepage" target="_blank">gitee</a><br>
+                                </td>
+                            </tr>
+                            
+                           
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="layui-card">
+                    <div class="layui-card-header"><i class="fa fa-paper-plane-o icon"></i>系统提示</div>
+                    <div class="layui-card-body layui-text layadmin-text">
+                        <p>本系统如果出现问题，请联系技术人员<a class="layui-btn layui-btn-xs layui-btn-danger" target="_blank" href="http://www.layui.com/doc">layui文档</a></p>
+                        <p>技术交流QQ群（716235988）：<a target="_blank" href="https://jq.qq.com/?_wv=1027&k=7TMTuAJv"><img border="0" src="//pub.idqqimg.com/wpa/images/group.png" alt="layuimini" title="layuimini"></a>（加群请备注来源：如gitee、github、官网等）</p>
+                        <p>欢迎使用该系统，本系统致力于仓储管理服务</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../lib/layui-v2.6.3/layui.js" charset="utf-8"></script>
+<script src="../js/lay-config.js?v=1.0.4" charset="utf-8"></script>
+<script>
+    layui.use(['layer', 'miniTab','echarts'], function () {
+        var $ = layui.jquery,
+            layer = layui.layer,
+            miniTab = layui.miniTab,
+            echarts = layui.echarts;
+
+        miniTab.listen();
+
+        /**
+         * 查看公告信息
+         **/
+        $('body').on('click', '.layuimini-notice', function () {
+            var title = $(this).children('.layuimini-notice-title').text(),
+                noticeTime = $(this).children('.layuimini-notice-extra').text(),
+                content = $(this).children('.layuimini-notice-content').html();
+            var html = '<div style="padding:15px 20px; text-align:justify; line-height: 22px;border-bottom:1px solid #e2e2e2;background-color: #2f4056;color: #ffffff">\n' +
+                '<div style="text-align: center;margin-bottom: 20px;font-weight: bold;border-bottom:1px solid #718fb5;padding-bottom: 5px"><h4 class="text-danger">' + title + '</h4></div>\n' +
+                '<div style="font-size: 12px">' + content + '</div>\n' +
+                '</div>\n';
+            parent.layer.open({
+                type: 1,
+                title: '系统公告'+'<span style="float: right;right: 1px;font-size: 12px;color: #b1b3b9;margin-top: 1px">'+noticeTime+'</span>',
+                area: '300px;',
+                shade: 0.8,
+                id: 'layuimini-notice',
+                btn: ['查看', '取消'],
+                btnAlign: 'c',
+                moveType: 1,
+                content:html,
+                success: function (layero) {
+                    var btn = layero.find('.layui-layer-btn');
+                    btn.find('.layui-layer-btn0').attr({
+                        href: 'https://gitee.com/zhongshaofa/layuimini',
+                        target: '_blank'
+                    });
+                }
+            });
+        });
+
+        /**
+         * 报表功能
+         */
+        var echartsRecords = echarts.init(document.getElementById('echarts-records'), 'walden');
+        var optionRecords = {
+            tooltip: {
+                trigger: 'axis'
+            },
+            legend: {
+                data:['A库物料','B库物料','C库物料','D库物料','其他']
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                containLabel: true
+            },
+            toolbox: {
+                feature: {
+                    saveAsImage: {}
+                }
+            },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: ['周一','周二','周三','周四','周五','周六','周日']
+            },
+            yAxis: {
+                type: 'value'
+            },
+            series: [
+                {
+                    name:'A库物料',
+                    type:'line',
+                    data:[120, 132, 101, 134, 90, 230, 210]
+                },
+                {
+                    name:'B库物料',
+                    type:'line',
+                    data:[220, 182, 191, 234, 290, 330, 310]
+                },
+                {
+                    name:'C库物料',
+                    type:'line',
+                    data:[150, 232, 201, 154, 190, 330, 410]
+                },
+                {
+                    name:'D库物料',
+                    type:'line',
+                    data:[320, 332, 301, 334, 390, 330, 320]
+                },
+                {
+                    name:'其他',
+                    type:'line',
+                    data:[820, 932, 901, 934, 1290, 1330, 1320]
+                }
+            ]
+        };
+        echartsRecords.setOption(optionRecords);
+
+        // echarts 窗口缩放自适应
+        window.onresize = function(){
+            echartsRecords.resize();
+        }
+
+    });
+</script>
+</body>
+</html>

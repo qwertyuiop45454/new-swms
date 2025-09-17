@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>入库预约管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        success: '#00B42A',
+                        warning: '#FF7D00',
+                        danger: '#F53F3F',
+                        gray: {
+                            100: '#F2F3F5',
+                            200: '#E5E6EB',
+                            300: '#C9CDD4',
+                            400: '#86909C',
+                            500: '#4E5969',
+                            600: '#1D2129',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .form-input-focus {
+                @apply focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all;
+            }
+            .btn-hover {
+                @apply transition-all duration-200 hover:shadow-md active:scale-95;
+            }
+            .table-row-hover {
+                @apply hover:bg-gray-50 transition-colors duration-150;
+            }
+            .input-error {
+                @apply border-danger focus:border-danger focus:ring-danger;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-6">
+    <div class="max-w-6xl mx-auto">
+        <!-- 页面标题 -->
+        <div class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-semibold text-gray-600">入库预约管理</h1>
+            <p class="text-gray-400 mt-1">管理物料入库预约申请及处理状态</p>
+        </div>
+
+        <!-- 操作区 -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <button id="addAppointmentBtn" class="bg-primary text-white px-4 py-2 rounded-md flex items-center btn-hover">
+                <i class="fa fa-plus mr-2"></i>新增入库预约
+            </button>
+            
+            <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3">
+                <div class="relative w-full sm:w-64">
+                    <input type="text" id="searchInput" 
+                           class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="搜索预约单号或物料名称">
+                    <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+                
+                <select id="statusFilter" class="w-full sm:w-40 px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                    <option value="">所有状态</option>
+                    <option value="pending">待审核</option>
+                    <option value="approved">已审核</option>
+                    <option value="rejected">已拒绝</option>
+                    <option value="completed">已完成</option>
+                </select>
+                
+                <select id="warehouseFilter" class="w-full sm:w-40 px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                    <option value="">所有仓库</option>
+                    <option value="1">一号仓库</option>
+                    <option value="2">二号仓库</option>
+                    <option value="3">三号仓库</option>
+                    <option value="4">四号仓库</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-primary">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">待审核预约</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">12</p>
+                    </div>
+                    <i class="fa fa-clock-o text-2xl text-primary"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-success">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">已审核预约</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">28</p>
+                    </div>
+                    <i class="fa fa-check-circle text-2xl text-success"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-warning">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">今日入库</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">5</p>
+                    </div>
+                    <i class="fa fa-calendar-check-o text-2xl text-warning"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-danger">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-400 text-sm">已拒绝预约</p>
+                        <p class="text-2xl font-semibold text-gray-600 mt-1">3</p>
+                    </div>
+                    <i class="fa fa-times-circle text-2xl text-danger"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 入库预约列表 -->
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-gray-50 text-left">
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">预约单号</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">预约日期</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">预计入库日期</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">仓库</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">申请人</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">物料总数</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">状态</th>
+                            <th class="px-4 py-3 text-gray-500 font-medium text-sm">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">IN-20240915-001</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-15</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-18</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">一号仓库</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">张三</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">3</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    待审核
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 view-appointment" data-id="1">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 approve-appointment" data-id="1">
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                    <button class="text-danger hover:text-danger/80 reject-appointment" data-id="1">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">IN-20240914-023</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-14</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-15</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">二号仓库</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">李四</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">1</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    已审核
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 view-appointment" data-id="2">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                    <button class="text-gray-500 hover:text-gray-700 complete-appointment" data-id="2">
+                                        <i class="fa fa-flag-checkered"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">IN-20240914-018</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-14</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-16</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">三号仓库</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">王五</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">5</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    已拒绝
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 view-appointment" data-id="3">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                    <button class="text-warning hover:text-warning/80 edit-appointment" data-id="3">
+                                        <i class="fa fa-pencil"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">IN-20240913-056</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-13</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-14</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">一号仓库</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">赵六</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    已完成
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 view-appointment" data-id="4">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-t border-gray-100 table-row-hover">
+                            <td class="px-4 py-3 text-sm text-gray-600">IN-20240912-045</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-12</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">2024-09-17</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">四号仓库</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">孙七</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">4</td>
+                            <td class="px-4 py-3">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    待审核
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-2">
+                                    <button class="text-primary hover:text-primary/80 view-appointment" data-id="5">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                    <button class="text-success hover:text-success/80 approve-appointment" data-id="5">
+                                        <i class="fa fa-check"></i>
+                                    </button>
+                                    <button class="text-danger hover:text-danger/80 reject-appointment" data-id="5">
+                                        <i class="fa fa-times"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="px-4 py-3 flex items-center justify-between border-t border-gray-100">
+                <div class="text-sm text-gray-500">
+                    显示 <span class="font-medium">1</span> 到 <span class="font-medium">5</span> 条，共 <span class="font-medium">56</span> 条记录
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i class="fa fa-chevron-left text-xs"></i>
+                    </button>
+                    <button class="px-3 py-1 border border-primary bg-primary text-white rounded-md">1</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">2</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">3</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">4</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50">5</button>
+                    <button class="px-3 py-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
+                        <i class="fa fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 入库预约表单模态框 -->
+    <div id="appointmentModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-600">新增入库预约</h3>
+                <button id="closeModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="appointmentForm" class="p-5">
+                <input type="hidden" id="appointmentId">
+                
+                <!-- 基本信息 -->
+                <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-600 mb-4 pb-2 border-b border-gray-100">基本信息</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label for="appointmentNo" class="block text-sm font-medium text-gray-500 mb-1">预约单号 <span class="text-danger">*</span></label>
+                            <input type="text" id="appointmentNo" readonly
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+                                   placeholder="系统自动生成">
+                            <p id="appointmentNoError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                        <div>
+                            <label for="appointmentDate" class="block text-sm font-medium text-gray-500 mb-1">预约日期 <span class="text-danger">*</span></label>
+                            <input type="date" id="appointmentDate" 
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                            <p id="appointmentDateError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                        <div>
+                            <label for="expectedDate" class="block text-sm font-medium text-gray-500 mb-1">预计入库日期 <span class="text-danger">*</span></label>
+                            <input type="date" id="expectedDate" 
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                            <p id="expectedDateError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                        <div>
+                            <label for="warehouse" class="block text-sm font-medium text-gray-500 mb-1">仓库 <span class="text-danger">*</span></label>
+                            <select id="warehouse" class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus">
+                                <option value="">请选择仓库</option>
+                                <option value="1">一号仓库</option>
+                                <option value="2">二号仓库</option>
+                                <option value="3">三号仓库</option>
+                                <option value="4">四号仓库</option>
+                            </select>
+                            <p id="warehouseError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                        <div>
+                            <label for="applicant" class="block text-sm font-medium text-gray-500 mb-1">申请人 <span class="text-danger">*</span></label>
+                            <input type="text" id="applicant" 
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="请输入申请人姓名">
+                            <p id="applicantError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                        <div>
+                            <label for="contactPhone" class="block text-sm font-medium text-gray-500 mb-1">联系电话 <span class="text-danger">*</span></label>
+                            <input type="tel" id="contactPhone" 
+                                   class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="请输入联系电话">
+                            <p id="contactPhoneError" class="mt-1 text-sm text-danger hidden"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 物料明细 -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-md font-medium text-gray-600">物料明细</h4>
+                        <button type="button" id="addMaterialBtn" class="text-primary text-sm flex items-center btn-hover">
+                            <i class="fa fa-plus-circle mr-1"></i> 添加物料
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" id="materialsTable">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">物料编码</th>
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">物料名称</th>
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">规格型号</th>
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">单位</th>
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">预约数量 <span class="text-danger">*</span></th>
+                                    <th class="px-3 py-3 text-left text-gray-500 font-medium">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materialsBody">
+                                <tr class="border-t border-gray-100 material-row">
+                                    <td class="px-3 py-3">
+                                        <input type="text" class="material-code w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                               placeholder="物料编码">
+                                        <p class="mt-1 text-sm text-danger material-code-error hidden"></p>
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <input type="text" class="material-name w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                               placeholder="物料名称">
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <input type="text" class="material-spec w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                               placeholder="规格型号">
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <input type="text" class="material-unit w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                               placeholder="单位">
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <input type="number" min="1" class="material-quantity w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                               placeholder="数量">
+                                        <p class="mt-1 text-sm text-danger material-quantity-error hidden"></p>
+                                    </td>
+                                    <td class="px-3 py-3">
+                                        <button type="button" class="text-danger hover:text-danger/80 remove-material" disabled>
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p id="materialsError" class="mt-2 text-sm text-danger hidden">请至少添加一种物料</p>
+                </div>
+                
+                <!-- 其他信息 -->
+                <div class="mb-6">
+                    <h4 class="text-md font-medium text-gray-600 mb-4 pb-2 border-b border-gray-100">其他信息</h4>
+                    <div>
+                        <label for="remark" class="block text-sm font-medium text-gray-500 mb-1">备注说明</label>
+                        <textarea id="remark" rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                  placeholder="请输入备注信息"></textarea>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="cancelBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-md btn-hover">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 入库预约详情模态框 -->
+    <div id="detailModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-600">入库预约详情</h3>
+                <button id="closeDetailModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-5">
+                <!-- 基本信息 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <p class="text-sm text-gray-500">预约单号</p>
+                        <p id="detailAppointmentNo" class="font-medium">IN-20240915-001</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">预约日期</p>
+                        <p id="detailAppointmentDate" class="font-medium">2024-09-15</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">预计入库日期</p>
+                        <p id="detailExpectedDate" class="font-medium">2024-09-18</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">仓库</p>
+                        <p id="detailWarehouse" class="font-medium">一号仓库</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">申请人</p>
+                        <p id="detailApplicant" class="font-medium">张三</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">联系电话</p>
+                        <p id="detailContactPhone" class="font-medium">13800138000</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">状态</p>
+                        <p id="detailStatus" class="font-medium text-yellow-600">待审核</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">处理时间</p>
+                        <p id="detailProcessTime" class="font-medium">-</p>
+                    </div>
+                </div>
+                
+                <!-- 物料明细 -->
+                <div class="mb-6">
+                    <h4 class="font-medium text-gray-600 mb-3">物料明细</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="bg-gray-50">
+                                    <th class="px-3 py-2 text-left text-gray-500">序号</th>
+                                    <th class="px-3 py-2 text-left text-gray-500">物料编码</th>
+                                    <th class="px-3 py-2 text-left text-gray-500">物料名称</th>
+                                    <th class="px-3 py-2 text-left text-gray-500">规格型号</th>
+                                    <th class="px-3 py-2 text-left text-gray-500">单位</th>
+                                    <th class="px-3 py-2 text-left text-gray-500">预约数量</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailMaterialsBody">
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-3 py-2">1</td>
+                                    <td class="px-3 py-2">MAT-2024-001</td>
+                                    <td class="px-3 py-2">笔记本电脑</td>
+                                    <td class="px-3 py-2">ThinkPad X1 Carbon</td>
+                                    <td class="px-3 py-2">台</td>
+                                    <td class="px-3 py-2">10</td>
+                                </tr>
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-3 py-2">2</td>
+                                    <td class="px-3 py-2">MAT-2024-002</td>
+                                    <td class="px-3 py-2">无线鼠标</td>
+                                    <td class="px-3 py-2">Logitech M325</td>
+                                    <td class="px-3 py-2">个</td>
+                                    <td class="px-3 py-2">20</td>
+                                </tr>
+                                <tr class="border-t border-gray-100">
+                                    <td class="px-3 py-2">3</td>
+                                    <td class="px-3 py-2">MAT-2024-015</td>
+                                    <td class="px-3 py-2">A4打印纸</td>
+                                    <td class="px-3 py-2">70g</td>
+                                    <td class="px-3 py-2">包</td>
+                                    <td class="px-3 py-2">50</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 审核信息 -->
+                <div class="mb-6" id="approvalSection">
+                    <h4 class="font-medium text-gray-600 mb-3">审核信息</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">审核人</p>
+                            <p id="detailApprover" class="font-medium">-</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">审核意见</p>
+                            <p id="detailApprovalComment" class="font-medium">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 备注信息 -->
+                <div class="mb-6">
+                    <p class="text-sm text-gray-500 mb-1">备注说明</p>
+                    <div class="p-3 bg-gray-50 rounded-md border border-gray-200">
+                        <p id="detailRemark" class="font-medium">季度办公用品补充，需在9月18日前完成入库。</p>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-end">
+                    <button id="closeDetailBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 拒绝原因模态框 -->
+    <div id="rejectModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div class="p-5 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-600">拒绝原因</h3>
+                <button id="closeRejectModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-5">
+                <input type="hidden" id="rejectAppointmentId">
+                <div>
+                    <label for="rejectReason" class="block text-sm font-medium text-gray-500 mb-1">拒绝原因 <span class="text-danger">*</span></label>
+                    <textarea id="rejectReason" rows="4" 
+                              class="w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                              placeholder="请输入拒绝原因"></textarea>
+                    <p id="rejectReasonError" class="mt-1 text-sm text-danger hidden"></p>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" id="cancelRejectBtn" class="px-4 py-2 border border-gray-200 rounded-md text-gray-600 hover:bg-gray-50 btn-hover">
+                        取消
+                    </button>
+                    <button type="button" id="confirmRejectBtn" class="px-4 py-2 bg-danger text-white rounded-md btn-hover">
+                        确认拒绝
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示消息 -->
+    <div id="toast" class="fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 translate-x-full opacity-0 z-50 flex items-center gap-2"></div>
+
+    <script>
+        // DOM元素
+        const appointmentModal = document.getElementById('appointmentModal');
+        const detailModal = document.getElementById('detailModal');
+        const rejectModal = document.getElementById('rejectModal');
+        const appointmentForm = document.getElementById('appointmentForm');
+        const toast = document.getElementById('toast');
+        let currentRejectId = null;
+        
+        // 初始化页面
+        function init() {
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').value = today;
+            
+            // 打开新增入库预约模态框
+            document.getElementById('addAppointmentBtn').addEventListener('click', () => {
+                document.getElementById('modalTitle').textContent = '新增入库预约';
+                document.getElementById('appointmentId').value = '';
+                document.getElementById('appointmentNo').value = generateAppointmentNo();
+                document.getElementById('appointmentDate').value = today;
+                document.getElementById('expectedDate').value = '';
+                
+                // 重置物料表格，只保留一行
+                const materialsBody = document.getElementById('materialsBody');
+                materialsBody.innerHTML = `
+                    <tr class="border-t border-gray-100 material-row">
+                        <td class="px-3 py-3">
+                            <input type="text" class="material-code w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="物料编码">
+                            <p class="mt-1 text-sm text-danger material-code-error hidden"></p>
+                        </td>
+                        <td class="px-3 py-3">
+                            <input type="text" class="material-name w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="物料名称">
+                        </td>
+                        <td class="px-3 py-3">
+                            <input type="text" class="material-spec w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="规格型号">
+                        </td>
+                        <td class="px-3 py-3">
+                            <input type="text" class="material-unit w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="单位">
+                        </td>
+                        <td class="px-3 py-3">
+                            <input type="number" min="1" class="material-quantity w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                   placeholder="数量">
+                            <p class="mt-1 text-sm text-danger material-quantity-error hidden"></p>
+                        </td>
+                        <td class="px-3 py-3">
+                            <button type="button" class="text-danger hover:text-danger/80 remove-material" disabled>
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                
+                clearErrors();
+                appointmentModal.classList.remove('hidden');
+                updateRemoveButtons();
+            });
+            
+            // 添加物料按钮
+            document.getElementById('addMaterialBtn').addEventListener('click', addMaterialRow);
+            
+            // 关闭模态框
+            document.getElementById('closeModal').addEventListener('click', () => {
+                appointmentModal.classList.add('hidden');
+            });
+            
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                appointmentModal.classList.add('hidden');
+            });
+            
+            // 关闭详情模态框
+            document.getElementById('closeDetailModal').addEventListener('click', () => {
+                detailModal.classList.add('hidden');
+            });
+            
+            document.getElementById('closeDetailBtn').addEventListener('click', () => {
+                detailModal.classList.add('hidden');
+            });
+            
+            // 关闭拒绝模态框
+            document.getElementById('closeRejectModal').addEventListener('click', () => {
+                rejectModal.classList.add('hidden');
+            });
+            
+            document.getElementById('cancelRejectBtn').addEventListener('click', () => {
+                rejectModal.classList.add('hidden');
+            });
+            
+            // 确认拒绝
+            document.getElementById('confirmRejectBtn').addEventListener('click', () => {
+                const reason = document.getElementById('rejectReason').value.trim();
+                if (!reason) {
+                    document.getElementById('rejectReasonError').textContent = '请输入拒绝原因';
+                    document.getElementById('rejectReasonError').classList.remove('hidden');
+                    document.getElementById('rejectReason').classList.add('input-error');
+                    return;
+                }
+                
+                // 模拟拒绝操作
+                showToast('入库预约已拒绝');
+                rejectModal.classList.add('hidden');
+                document.getElementById('rejectReason').value = '';
+                
+                // 更新列表中对应行的状态
+                if (currentRejectId) {
+                    const row = document.querySelector(`.reject-appointment[data-id="${currentRejectId}"]`).closest('tr');
+                    const statusCell = row.querySelector('td:nth-child(7) span');
+                    statusCell.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800';
+                    statusCell.textContent = '已拒绝';
+                    
+                    // 更新操作按钮
+                    const actionCell = row.querySelector('td:last-child div');
+                    actionCell.innerHTML = `
+                        <button class="text-primary hover:text-primary/80 view-appointment" data-id="${currentRejectId}">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                        <button class="text-warning hover:text-warning/80 edit-appointment" data-id="${currentRejectId}">
+                            <i class="fa fa-pencil"></i>
+                        </button>
+                    `;
+                    // 重新绑定事件
+                    bindViewAppointmentEvents();
+                    bindEditAppointmentEvents();
+                }
+            });
+            
+            // 查看预约详情
+            bindViewAppointmentEvents();
+            
+            // 编辑预约
+            bindEditAppointmentEvents();
+            
+            // 审核通过
+            document.querySelectorAll('.approve-appointment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const appointmentId = this.getAttribute('data-id');
+                    if (confirm('确定要审核通过此入库预约吗？')) {
+                        showToast('入库预约已审核通过');
+                        
+                        // 更新列表中对应行的状态
+                        const row = this.closest('tr');
+                        const statusCell = row.querySelector('td:nth-child(7) span');
+                        statusCell.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800';
+                        statusCell.textContent = '已审核';
+                        
+                        // 更新操作按钮
+                        const actionCell = row.querySelector('td:last-child div');
+                        actionCell.innerHTML = `
+                            <button class="text-primary hover:text-primary/80 view-appointment" data-id="${appointmentId}">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                            <button class="text-gray-500 hover:text-gray-700 complete-appointment" data-id="${appointmentId}">
+                                <i class="fa fa-flag-checkered"></i>
+                            </button>
+                        `;
+                        // 重新绑定事件
+                        bindViewAppointmentEvents();
+                        bindCompleteAppointmentEvents();
+                    }
+                });
+            });
+            
+            // 标记完成
+            bindCompleteAppointmentEvents();
+            
+            // 拒绝预约
+            document.querySelectorAll('.reject-appointment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    currentRejectId = this.getAttribute('data-id');
+                    document.getElementById('rejectAppointmentId').value = currentRejectId;
+                    document.getElementById('rejectReason').value = '';
+                    document.getElementById('rejectReasonError').classList.add('hidden');
+                    document.getElementById('rejectReason').classList.remove('input-error');
+                    rejectModal.classList.remove('hidden');
+                });
+            });
+            
+            // 搜索和筛选功能
+            document.getElementById('searchInput').addEventListener('input', filterAppointments);
+            document.getElementById('statusFilter').addEventListener('change', filterAppointments);
+            document.getElementById('warehouseFilter').addEventListener('change', filterAppointments);
+            
+            // 表单提交
+            appointmentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (validateForm()) {
+                    submitForm();
+                }
+            });
+        }
+        
+        // 绑定查看预约事件
+        function bindViewAppointmentEvents() {
+            document.querySelectorAll('.view-appointment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const appointmentId = this.getAttribute('data-id');
+                    // 模拟获取数据
+                    const appointments = {
+                        1: {
+                            appointmentNo: 'IN-20240915-001',
+                            appointmentDate: '2024-09-15',
+                            expectedDate: '2024-09-18',
+                            warehouse: '一号仓库',
+                            applicant: '张三',
+                            contactPhone: '13800138000',
+                            status: '待审核',
+                            statusClass: 'text-yellow-600',
+                            processTime: '-',
+                            approver: '-',
+                            approvalComment: '-',
+                            remark: '季度办公用品补充，需在9月18日前完成入库。'
+                        },
+                        2: {
+                            appointmentNo: 'IN-20240914-023',
+                            appointmentDate: '2024-09-14',
+                            expectedDate: '2024-09-15',
+                            warehouse: '二号仓库',
+                            applicant: '李四',
+                            contactPhone: '13900139000',
+                            status: '已审核',
+                            statusClass: 'text-green-600',
+                            processTime: '2024-09-14 16:30',
+                            approver: '管理员',
+                            approvalComment: '同意入库',
+                            remark: '补充笔记本电脑库存'
+                        },
+                        3: {
+                            appointmentNo: 'IN-20240914-018',
+                            appointmentDate: '2024-09-14',
+                            expectedDate: '2024-09-16',
+                            warehouse: '三号仓库',
+                            applicant: '王五',
+                            contactPhone: '13700137000',
+                            status: '已拒绝',
+                            statusClass: 'text-red-600',
+                            processTime: '2024-09-14 10:15',
+                            approver: '管理员',
+                            approvalComment: '物料规格不符合要求，请重新提交',
+                            remark: '采购一批办公家具'
+                        },
+                        4: {
+                            appointmentNo: 'IN-20240913-056',
+                            appointmentDate: '2024-09-13',
+                            expectedDate: '2024-09-14',
+                            warehouse: '一号仓库',
+                            applicant: '赵六',
+                            contactPhone: '13600136000',
+                            status: '已完成',
+                            statusClass: 'text-blue-600',
+                            processTime: '2024-09-13 14:20',
+                            approver: '管理员',
+                            approvalComment: '同意入库',
+                            remark: '紧急补充打印纸'
+                        },
+                        5: {
+                            appointmentNo: 'IN-20240912-045',
+                            appointmentDate: '2024-09-12',
+                            expectedDate: '2024-09-17',
+                            warehouse: '四号仓库',
+                            applicant: '孙七',
+                            contactPhone: '13500135000',
+                            status: '待审核',
+                            statusClass: 'text-yellow-600',
+                            processTime: '-',
+                            approver: '-',
+                            approvalComment: '-',
+                            remark: '新员工入职设备'
+                        }
+                    };
+                    
+                    const appointment = appointments[appointmentId];
+                    if (appointment) {
+                        document.getElementById('detailAppointmentNo').textContent = appointment.appointmentNo;
+                        document.getElementById('detailAppointmentDate').textContent = appointment.appointmentDate;
+                        document.getElementById('detailExpectedDate').textContent = appointment.expectedDate;
+                        document.getElementById('detailWarehouse').textContent = appointment.warehouse;
+                        document.getElementById('detailApplicant').textContent = appointment.applicant;
+                        document.getElementById('detailContactPhone').textContent = appointment.contactPhone;
+                        document.getElementById('detailStatus').textContent = appointment.status;
+                        document.getElementById('detailStatus').className = `font-medium ${appointment.statusClass}`;
+                        document.getElementById('detailProcessTime').textContent = appointment.processTime;
+                        document.getElementById('detailApprover').textContent = appointment.approver;
+                        document.getElementById('detailApprovalComment').textContent = appointment.approvalComment;
+                        document.getElementById('detailRemark').textContent = appointment.remark;
+                        
+                        detailModal.classList.remove('hidden');
+                    }
+                });
+            });
+        }
+        
+        // 绑定编辑预约事件
+        function bindEditAppointmentEvents() {
+            document.querySelectorAll('.edit-appointment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // 模拟编辑功能，实际应用中应加载数据
+                    const appointmentId = this.getAttribute('data-id');
+                    document.getElementById('modalTitle').textContent = '编辑入库预约';
+                    document.getElementById('appointmentId').value = appointmentId;
+                    document.getElementById('appointmentNo').value = `IN-20240914-018`;
+                    document.getElementById('appointmentDate').value = '2024-09-14';
+                    document.getElementById('expectedDate').value = '2024-09-17';
+                    document.getElementById('warehouse').value = '3';
+                    document.getElementById('applicant').value = '王五';
+                    document.getElementById('contactPhone').value = '13700137000';
+                    document.getElementById('remark').value = '采购一批办公家具，已更新规格';
+                    
+                    // 设置物料明细
+                    const materialsBody = document.getElementById('materialsBody');
+                    materialsBody.innerHTML = `
+                        <tr class="border-t border-gray-100 material-row">
+                            <td class="px-3 py-3">
+                                <input type="text" class="material-code w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                       value="MAT-2024-052">
+                                <p class="mt-1 text-sm text-danger material-code-error hidden"></p>
+                            </td>
+                            <td class="px-3 py-3">
+                                <input type="text" class="material-name w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                       value="办公椅">
+                            </td>
+                            <td class="px-3 py-3">
+                                <input type="text" class="material-spec w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                       value="人体工学椅（更新规格）">
+                            </td>
+                            <td class="px-3 py-3">
+                                <input type="text" class="material-unit w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                       value="把">
+                            </td>
+                            <td class="px-3 py-3">
+                                <input type="number" min="1" class="material-quantity w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                                       value="10">
+                                <p class="mt-1 text-sm text-danger material-quantity-error hidden"></p>
+                            </td>
+                            <td class="px-3 py-3">
+                                <button type="button" class="text-danger hover:text-danger/80 remove-material">
+                                    <i class="fa fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    
+                    clearErrors();
+                    appointmentModal.classList.remove('hidden');
+                    updateRemoveButtons();
+                    bindRemoveMaterialEvents();
+                });
+            });
+        }
+        
+        // 绑定完成预约事件
+        function bindCompleteAppointmentEvents() {
+            document.querySelectorAll('.complete-appointment').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const appointmentId = this.getAttribute('data-id');
+                    if (confirm('确定要标记此入库预约为已完成吗？')) {
+                        showToast('入库预约已标记为完成');
+                        
+                        // 更新列表中对应行的状态
+                        const row = this.closest('tr');
+                        const statusCell = row.querySelector('td:nth-child(7) span');
+                        statusCell.className = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800';
+                        statusCell.textContent = '已完成';
+                        
+                        // 更新操作按钮
+                        const actionCell = row.querySelector('td:last-child div');
+                        actionCell.innerHTML = `
+                            <button class="text-primary hover:text-primary/80 view-appointment" data-id="${appointmentId}">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        `;
+                        // 重新绑定事件
+                        bindViewAppointmentEvents();
+                    }
+                });
+            });
+        }
+        
+        // 添加物料行
+        function addMaterialRow() {
+            const materialsBody = document.getElementById('materialsBody');
+            const newRow = document.createElement('tr');
+            newRow.className = 'border-t border-gray-100 material-row';
+            newRow.innerHTML = `
+                <td class="px-3 py-3">
+                    <input type="text" class="material-code w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="物料编码">
+                    <p class="mt-1 text-sm text-danger material-code-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="material-name w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="物料名称">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="material-spec w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="规格型号">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="text" class="material-unit w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="单位">
+                </td>
+                <td class="px-3 py-3">
+                    <input type="number" min="1" class="material-quantity w-full px-3 py-2 border border-gray-200 rounded-md form-input-focus"
+                           placeholder="数量">
+                    <p class="mt-1 text-sm text-danger material-quantity-error hidden"></p>
+                </td>
+                <td class="px-3 py-3">
+                    <button type="button" class="text-danger hover:text-danger/80 remove-material">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            materialsBody.appendChild(newRow);
+            updateRemoveButtons();
+            bindRemoveMaterialEvents();
+        }
+        
+        // 绑定删除物料事件
+        function bindRemoveMaterialEvents() {
+            document.querySelectorAll('.remove-material').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (document.querySelectorAll('.material-row').length > 1) {
+                        this.closest('.material-row').remove();
+                        updateRemoveButtons();
+                    }
+                });
+            });
+        }
+        
+        // 更新删除按钮状态
+        function updateRemoveButtons() {
+            const rows = document.querySelectorAll('.material-row');
+            const removeButtons = document.querySelectorAll('.remove-material');
+            
+            if (rows.length <= 1) {
+                removeButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                });
+            } else {
+                removeButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                });
+            }
+        }
+        
+        // 生成预约单号
+        function generateAppointmentNo() {
+            const date = new Date();
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const random = Math.floor(1000 + Math.random() * 9000); // 4位随机数
+            return `IN-${year}${month}${day}-${random}`;
+        }
+        
+        // 筛选预约
+        function filterAppointments() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const warehouseFilter = document.getElementById('warehouseFilter').value;
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                const statusCell = row.querySelector('td:nth-child(7) span').textContent.toLowerCase();
+                const warehouseCell = row.querySelector('td:nth-child(4)').textContent;
+                
+                // 应用搜索词筛选
+                const matchesSearch = text.includes(searchTerm);
+                
+                // 应用状态筛选
+                const matchesStatus = !statusFilter ||
+                    (statusFilter === 'pending' && statusCell.includes('待审核')) ||
+                    (statusFilter === 'approved' && statusCell.includes('已审核')) ||
+                    (statusFilter === 'rejected' && statusCell.includes('已拒绝')) ||
+                    (statusFilter === 'completed' && statusCell.includes('已完成'));
+                
+                // 应用仓库筛选
+                const matchesWarehouse = !warehouseFilter ||
+                    (warehouseFilter === '1' && warehouseCell.includes('一号仓库')) ||
+                    (warehouseFilter === '2' && warehouseCell.includes('二号仓库')) ||
+                    (warehouseFilter === '3' && warehouseCell.includes('三号仓库')) ||
+                    (warehouseFilter === '4' && warehouseCell.includes('四号仓库'));
+                
+                // 显示或隐藏行
+                row.style.display = (matchesSearch && matchesStatus && matchesWarehouse) ? '' : 'none';
+            });
+        }
+        
+        // 清除错误提示
+        function clearErrors() {
+            // 清除表单错误
+            document.querySelectorAll('[id$="Error"]').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+            
+            // 清除输入框错误状态
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.classList.remove('input-error');
+            });
+            
+            // 清除物料行错误
+            document.querySelectorAll('.material-code-error, .material-quantity-error').forEach(el => {
+                el.classList.add('hidden');
+                el.textContent = '';
+            });
+        }
+        
+        // 显示错误信息
+        function showError(inputEl, errorId, message) {
+            inputEl.classList.add('input-error');
+            const errorEl = document.getElementById(errorId);
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 显示物料行错误
+        function showMaterialRowError(inputEl, errorEl, message) {
+            inputEl.classList.add('input-error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+        
+        // 验证表单
+        function validateForm() {
+            let isValid = true;
+            clearErrors();
+            
+            // 预约日期验证
+            const appointmentDate = document.getElementById('appointmentDate');
+            if (!appointmentDate.value) {
+                showError(appointmentDate, 'appointmentDateError', '请选择预约日期');
+                isValid = false;
+            }
+            
+            // 预计入库日期验证
+            const expectedDate = document.getElementById('expectedDate');
+            if (!expectedDate.value) {
+                showError(expectedDate, 'expectedDateError', '请选择预计入库日期');
+                isValid = false;
+            } else if (new Date(expectedDate.value) < new Date(appointmentDate.value)) {
+                showError(expectedDate, 'expectedDateError', '预计入库日期不能早于预约日期');
+                isValid = false;
+            }
+            
+            // 仓库验证
+            const warehouse = document.getElementById('warehouse');
+            if (!warehouse.value) {
+                showError(warehouse, 'warehouseError', '请选择仓库');
+                isValid = false;
+            }
+            
+            // 申请人验证
+            const applicant = document.getElementById('applicant');
+            if (!applicant.value.trim()) {
+                showError(applicant, 'applicantError', '请输入申请人姓名');
+                isValid = false;
+            }
+            
+            // 联系电话验证
+            const contactPhone = document.getElementById('contactPhone');
+            if (!contactPhone.value.trim()) {
+                showError(contactPhone, 'contactPhoneError', '请输入联系电话');
+                isValid = false;
+            } else if (!/^1[3-9]\d{9}$/.test(contactPhone.value.trim())) {
+                showError(contactPhone, 'contactPhoneError', '请输入有效的手机号码');
+                isValid = false;
+            }
+            
+            // 物料明细验证
+            const materialRows = document.querySelectorAll('.material-row');
+            if (materialRows.length === 0) {
+                document.getElementById('materialsError').classList.remove('hidden');
+                isValid = false;
+            } else {
+                materialRows.forEach(row => {
+                    // 物料编码验证
+                    const codeInput = row.querySelector('.material-code');
+                    const codeError = row.querySelector('.material-code-error');
+                    if (!codeInput.value.trim()) {
+                        showMaterialRowError(codeInput, codeError, '物料编码不能为空');
+                        isValid = false;
+                    }
+                    
+                    // 预约数量验证
+                    const quantityInput = row.querySelector('.material-quantity');
+                    const quantityError = row.querySelector('.material-quantity-error');
+                    if (!quantityInput.value || quantityInput.value <= 0) {
+                        showMaterialRowError(quantityInput, quantityError, '请输入有效的预约数量');
+                        isValid = false;
+                    }
+                });
+            }
+            
+            return isValid;
+        }
+        
+        // 提交表单
+        function submitForm() {
+            const appointmentId = document.getElementById('appointmentId').value;
+            const isEdit = !!appointmentId;
+            const appointmentNo = document.getElementById('appointmentNo').value;
+            
+            // 模拟提交
+            setTimeout(() => {
+                appointmentModal.classList.add('hidden');
+                showToast(isEdit ? `入库预约 ${appointmentNo} 更新成功` : `入库预约 ${appointmentNo} 创建成功`);
+            }, 800);
+        }
+        
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const bgColors = {
+                success: 'bg-success text-white',
+                error: 'bg-danger text-white',
+                warning: 'bg-warning text-white',
+                info: 'bg-primary text-white'
+            };
+            
+            toast.innerHTML = `<i class="fa fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}`;
+            toast.className = `fixed top-4 right-4 px-4 py-3 rounded-md shadow-lg transform transition-all duration-300 z-50 flex items-center gap-2 ${bgColors[type]}`;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+            }, 3000);
+        }
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(e) {
+            if (e.target === appointmentModal) {
+                appointmentModal.classList.add('hidden');
+            }
+            if (e.target === detailModal) {
+                detailModal.classList.add('hidden');
+            }
+            if (e.target === rejectModal) {
+                rejectModal.classList.add('hidden');
+            }
+        });
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+    
